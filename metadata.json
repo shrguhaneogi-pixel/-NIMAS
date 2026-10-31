@@ -1,0 +1,6 @@
+{
+  "name": "ÁNIMAS: The Sovereign 3D Ofrenda",
+  "description": "A local-first, privacy-preserving interactive 3D memorial ofrenda inspired by Día de los Muertos and the Ghost in the Machine. Features grounded RAG companion, sovereign sentiment visual engine, and complete prompt suite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import { OfrendaCanvas } from '../ThreeOfrenda/OfrendaCanvas';
 import { FloatingDock } from '../FloatingDock';
-import { LeftCameoRail } from '../Navigation/LeftCameoRail';
+import { RelicRail } from '../Navigation/RelicRail';
 import { MemoryInspectorModal } from '../MemoryInspectorModal';
 import { VisualDirectionState, OfrendaItemClickData } from '../../types';
 import { audioAmbience } from '../../services/audioAmbience';
@@ -81,8 +81,8 @@ export const SovereignSanctuaryTab: React.FC<SovereignSanctuaryTabProps> = ({
         onResetView={handleResetView}
       />
 
-      {/* Left-Edge Vertical Cameo Rail (Prevents bottom-edge UI collisions) */}
-      <LeftCameoRail
+      {/* Left-Edge Vertical Relic Rail (Prevents bottom-edge UI collisions) */}
+      <RelicRail
         selectedOfferingId={selectedOffering?.id ?? null}
         onSelectRelic={handleCameoSelect}
       />

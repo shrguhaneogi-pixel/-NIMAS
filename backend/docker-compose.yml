@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  animas-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: animas-backend:latest
+    container_name: animas-sovereign-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://*.vercel.app
+      - DATABASE_PATH=/app/data/animas_sovereign.db
+    volumes:
+      - animas-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  animas-data:

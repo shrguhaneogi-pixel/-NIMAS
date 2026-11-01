@@ -4,8 +4,14 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
   return {
     plugins: [react(), tailwindcss()],
+    envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
+    define: {
+      'process.env.NEXT_PUBLIC_API_URL': JSON.stringify(apiUrl),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

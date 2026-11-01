@@ -156,8 +156,49 @@ describe('Visual Overhaul: WebGL Dither Cursor Effect (Post-Processing & FBO Tra
     assert.ok(fs.existsSync(effectPath), 'DitherCursorEffect.ts must exist');
     assert.ok(effectCode.includes('uniform vec2 uMouse;'), 'Fragment shader must take uMouse');
     assert.ok(effectCode.includes('uniform vec2 uResolution;'), 'Fragment shader must take uResolution');
-    assert.ok(effectCode.includes('uniform float uRadius;'), 'Shader must take uRadius');
+    assert.ok(effectCode.includes('uniform float uCoreRadius;'), 'Shader must take uCoreRadius for uncolored candle core');
+    assert.ok(effectCode.includes('uniform float uRing1Radius;'), 'Shader must take uRing1Radius for inner candle halo');
+    assert.ok(effectCode.includes('uniform float uRing2Radius;'), 'Shader must take uRing2Radius for outer marigold corona');
     assert.ok(effectCode.includes('uniform float uDecay;'), 'Trail shader must take uDecay');
+  });
+
+  test('Implements Two Concentric Rings with uncolored core mathematical modeling', () => {
+    // Mathematical verification of concentric ring formulation
+    const uCoreRadius = 0.022;
+    const uRing1Radius = 0.045;
+    const uRing1Width = 0.012;
+    const uRing2Radius = 0.080;
+    const uRing2Width = 0.018;
+
+    function calcRingIntensity(dist) {
+      if (dist < uCoreRadius) return 0.0;
+      const d1 = (dist - uRing1Radius) / uRing1Width;
+      const r1 = Math.exp(-d1 * d1) * 0.95;
+      const d2 = (dist - uRing2Radius) / uRing2Width;
+      const r2 = Math.exp(-d2 * d2) * 0.70;
+      return Math.max(r1, r2);
+    }
+
+    // 1. Core exclusion zone (pixels closest to cursor have no colour)
+    assert.strictEqual(calcRingIntensity(0.0), 0.0, 'Center hotspot must be strictly 0.0 intensity');
+    assert.strictEqual(calcRingIntensity(0.010), 0.0, 'Inner wax zone must be strictly 0.0 intensity');
+    assert.strictEqual(calcRingIntensity(0.020), 0.0, 'Immediate boundary inside core must be 0.0 intensity');
+
+    // 2. Ring 1 (Inner golden halo) local peak around 0.045
+    const r1Peak = calcRingIntensity(0.045);
+    assert.ok(r1Peak > 0.90, `Ring 1 peak should be near 0.95, got ${r1Peak}`);
+    assert.ok(r1Peak > calcRingIntensity(0.030), 'Ring 1 peak must be higher than inner slope');
+    assert.ok(r1Peak > calcRingIntensity(0.060), 'Ring 1 peak must be higher than intermediate trough');
+
+    // 3. Ring 2 (Outer corona) local peak around 0.080
+    const r2Peak = calcRingIntensity(0.080);
+    assert.ok(r2Peak > 0.65, `Ring 2 peak should be near 0.70, got ${r2Peak}`);
+    assert.ok(r2Peak > calcRingIntensity(0.062), 'Ring 2 peak must be higher than intermediate trough');
+    assert.ok(r2Peak > calcRingIntensity(0.120), 'Ring 2 peak must be higher than outer falloff');
+
+    // 4. Intermediate trough creates distinct concentric rings
+    const trough = calcRingIntensity(0.062);
+    assert.ok(trough < r1Peak && trough < r2Peak, 'Intermediate valley must separate Ring 1 and Ring 2');
   });
 
   test('Implements 4x4 Bayer matrix ordered dithering', () => {

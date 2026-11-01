@@ -32,6 +32,7 @@ const DEFAULT_TARGET_Z = 0;
 // Reusable math helpers for zero-GC raycasting against angled proxy plane
 const _raycaster = new THREE.Raycaster();
 const _intersectionPoint = new THREE.Vector3();
+const _petalDummy = new THREE.Object3D();
 
 interface OfferingConfig {
   id: string;
@@ -265,6 +266,23 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
     return buildOfrendaScene(scene, textures);
   }, [scene, textures]);
 
+  // Clean up GPU geometries and materials on unmount
+  useEffect(() => {
+    return () => {
+      scene.remove(graph.keyLight);
+      scene.remove(graph.fillLight);
+      scene.remove(graph.altarGroup);
+      scene.remove(graph.interactiveGroup);
+
+      for (const geo of graph.disposables.geometries) {
+        geo.dispose();
+      }
+      for (const mat of graph.disposables.materials) {
+        mat.dispose();
+      }
+    };
+  }, [graph, scene]);
+
   // Environment Studio Reflections
   useEffect(() => {
     const pmremGenerator = new THREE.PMREMGenerator(gl);
@@ -481,12 +499,11 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
         petals.positions[i * 3 + 2] = (Math.random() - 0.5) * 4.0;
       }
 
-      const dummy = new THREE.Object3D();
-      dummy.position.set(petals.positions[i * 3], petals.positions[i * 3 + 1], petals.positions[i * 3 + 2]);
-      dummy.rotation.set(petals.rotations[i * 3], petals.rotations[i * 3 + 1], petals.rotations[i * 3 + 2]);
-      dummy.scale.setScalar(petals.scales[i]);
-      dummy.updateMatrix();
-      petals.mesh.setMatrixAt(i, dummy.matrix);
+      _petalDummy.position.set(petals.positions[i * 3], petals.positions[i * 3 + 1], petals.positions[i * 3 + 2]);
+      _petalDummy.rotation.set(petals.rotations[i * 3], petals.rotations[i * 3 + 1], petals.rotations[i * 3 + 2]);
+      _petalDummy.scale.setScalar(petals.scales[i]);
+      _petalDummy.updateMatrix();
+      petals.mesh.setMatrixAt(i, _petalDummy.matrix);
     }
     petals.mesh.instanceMatrix.needsUpdate = true;
   });

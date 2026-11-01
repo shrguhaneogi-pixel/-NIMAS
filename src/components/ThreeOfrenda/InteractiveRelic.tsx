@@ -12,7 +12,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Sparkles } from 'lucide-react';
 
@@ -68,6 +68,10 @@ export const InteractiveRelic: React.FC<InteractiveRelicProps> = ({
     if (!groupRef.current) return;
 
     const targetIntensity = isHovered || isFocused || isSelected ? 0.85 : 0.0;
+    if (emissiveIntensityRef.current < 0.001 && targetIntensity === 0.0) {
+      return;
+    }
+
     emissiveIntensityRef.current = THREE.MathUtils.damp(
       emissiveIntensityRef.current,
       targetIntensity,
@@ -99,18 +103,18 @@ export const InteractiveRelic: React.FC<InteractiveRelicProps> = ({
     });
   });
 
-  const handlePointerOver = (e: any) => {
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setIsHovered(true);
   };
 
-  const handlePointerOut = (e: any) => {
+  const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setIsHovered(false);
   };
 
   // Delta-based Click Throttling: prevents camera drag releases from triggering clicks
-  const handleClick = (e: any) => {
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     if (e.delta !== undefined && e.delta > 2) {
       return; // Dragged orbit detected, suppress click

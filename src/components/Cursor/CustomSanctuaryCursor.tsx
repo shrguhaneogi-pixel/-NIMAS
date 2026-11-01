@@ -45,6 +45,7 @@ export const CustomSanctuaryCursor: React.FC = () => {
 
   // Position, velocity, and press tracking
   const posRef = useRef({ x: -200, y: -200, prevX: -200, prevY: -200, vx: 0, vy: 0, lastTime: 0 });
+  const isVisibleRef = useRef(false);
   const isPressedRef = useRef(false);
   const pressIntensityRef = useRef(0.0);
   const embersRef = useRef<EmberParticle[]>([]);
@@ -88,7 +89,8 @@ export const CustomSanctuaryCursor: React.FC = () => {
       posRef.current.x = e.clientX;
       posRef.current.y = e.clientY;
 
-      if (!isVisible) {
+      if (!isVisibleRef.current) {
+        isVisibleRef.current = true;
         setIsVisible(true);
         document.body.classList.add('has-custom-cursor');
       }
@@ -113,6 +115,7 @@ export const CustomSanctuaryCursor: React.FC = () => {
     };
 
     const handlePointerLeave = () => {
+      isVisibleRef.current = false;
       setIsVisible(false);
       isPressedRef.current = false;
       document.body.classList.remove('has-custom-cursor');
@@ -120,6 +123,7 @@ export const CustomSanctuaryCursor: React.FC = () => {
     };
 
     const handleBlur = () => {
+      isVisibleRef.current = false;
       setIsVisible(false);
       isPressedRef.current = false;
       document.body.classList.remove('has-custom-cursor');
@@ -257,7 +261,7 @@ export const CustomSanctuaryCursor: React.FC = () => {
       window.removeEventListener('animas:cursor-state', handleCursorStateEvent);
       document.body.classList.remove('has-custom-cursor');
     };
-  }, [isVisible]);
+  }, []);
 
   // Touch screen mobile tap / hold thermal ripple fallback
   if (isTouchDevice) {

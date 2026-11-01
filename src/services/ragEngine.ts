@@ -5,8 +5,8 @@
  * 100% offline-first retrieval engine running in-browser using BM25 + TF-IDF cosine embeddings.
  */
 
-import { MemoryChunk, MemoryDocument, RetrievalResult } from '../types';
-import { SYNTHETIC_ARCHIVE } from '../data/syntheticArchive';
+import type { MemoryChunk, MemoryDocument, RetrievalResult } from '../types/index.ts';
+import { SYNTHETIC_ARCHIVE } from '../data/syntheticArchive.ts';
 
 const STORAGE_KEY = 'animas_sovereign_archive_v1';
 
@@ -24,10 +24,14 @@ const STOPWORDS = new Set([
   'en', 'y', 'o', 'que', 'con', 'por', 'para', 'se', 'su', 'sus'
 ]);
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^\w\sáéíóúüñ]/gi, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .split(/\s+/)
     .filter(token => token.length > 1 && !STOPWORDS.has(token));
 }
@@ -41,10 +45,12 @@ export class LocalRAGEngine {
 
   public loadDocuments(): MemoryDocument[] {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        this.documents = JSON.parse(stored);
-        return this.documents;
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          this.documents = JSON.parse(stored);
+          return this.documents;
+        }
       }
     } catch {
       // Fallback
@@ -55,7 +61,9 @@ export class LocalRAGEngine {
 
   public saveDocuments(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.documents));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.documents));
+      }
     } catch (e) {
       console.warn('Could not persist to localStorage:', e);
     }
@@ -90,17 +98,20 @@ export class LocalRAGEngine {
     tags?: string[];
   }): MemoryDocument {
     const source_id = `mem_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-    const paragraphs = params.content
+    const rawContent = (params.content || '').trim();
+    const splitParas = rawContent
       .split(/\n\s*\n/)
       .map(p => p.trim())
       .filter(p => p.length > 0);
+
+    const paragraphs = splitParas.length > 0 ? splitParas : [rawContent || 'Empty memory record'];
 
     const chunks: MemoryChunk[] = paragraphs.map((para, idx) => ({
       chunk_id: `chunk_${source_id}_${idx + 1}`,
       source_id,
       chunk_index: idx,
       content: para,
-      token_estimate: Math.round(para.split(/\s+/).length * 1.3)
+      token_estimate: Math.max(1, Math.round(para.split(/\s+/).length * 1.3))
     }));
 
     const newDoc: MemoryDocument = {
@@ -177,7 +188,8 @@ export class LocalRAGEngine {
 
       for (const token of queryTokens) {
         const idf = Math.log((nDocs - (docFreq[token] || 0) + 0.5) / ((docFreq[token] || 0) + 0.5) + 1);
-        const tf = (chunkText.match(new RegExp(`\\b${token}`, 'g')) || []).length;
+        const safePattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(token)}(?![\\p{L}\\p{N}_])`, 'gu');
+        const tf = (chunkText.match(safePattern) || []).length;
 
         if (tf > 0) {
           score += idf * (tf * 2.2) / (tf + 1.2 * 1.0);

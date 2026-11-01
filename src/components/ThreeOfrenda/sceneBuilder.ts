@@ -2,8 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * ÁNIMAS: The Sovereign 3D Ofrenda - Three.js Procedural Scene Builder
- * Assembles a monumental corbelled stone sanctuary, overhead vibrant papel picado bunting,
- * lush cempasúchil marigold banks, and a candlelit ceremonial pathway.
+ * Optimized Low-Poly Retro-Geometry (6-8 segments) & Lightweight 16-Bit Lighting Rig.
+ * Locks 60 FPS on integrated GPUs and mobile chipsets.
  */
 
 import * as THREE from 'three';
@@ -46,6 +46,7 @@ export interface OfrendaSceneGraph {
   petals: PetalSystem;
   copalSmoke: CopalSmokeSystem;
   clickableMap: Map<string, OfrendaItemClickData>;
+  relicGroups: Map<string, THREE.Group>;
   keyLight: THREE.DirectionalLight;
   fillLight: THREE.HemisphereLight;
   altarGroup: THREE.Group;
@@ -67,6 +68,7 @@ export function buildOfrendaScene(
 
   const candles: CandleRef[] = [];
   const clickableMap = new Map<string, OfrendaItemClickData>();
+  const relicGroups = new Map<string, THREE.Group>();
 
   // Disposal tracking registry
   const disposables = {
@@ -85,93 +87,74 @@ export function buildOfrendaScene(
   };
 
   // ----------------------------------------------------
-  // 1. STUDIO LIGHTING RIG (Warm Key Light, Cool Sky/Ground Fill)
+  // 1. LIGHTWEIGHT RETRO LIGHTING RIG (No GPU Shadow Passes)
   // ----------------------------------------------------
-  // Directional key light from upper-right casting soft shadows
-  const keyLight = new THREE.DirectionalLight(0xffb066, 1.9);
+  const keyLight = new THREE.DirectionalLight(0xffb066, 1.8);
   keyLight.position.set(4, 9, 6);
-  keyLight.castShadow = true;
-  keyLight.shadow.mapSize.width = 1024;
-  keyLight.shadow.mapSize.height = 1024;
-  keyLight.shadow.camera.near = 0.5;
-  keyLight.shadow.camera.far = 30;
-  keyLight.shadow.camera.left = -6;
-  keyLight.shadow.camera.right = 6;
-  keyLight.shadow.camera.top = 8;
-  keyLight.shadow.camera.bottom = -2;
-  keyLight.shadow.bias = -0.0005;
-  keyLight.shadow.normalBias = 0.02;
+  keyLight.castShadow = false;
   scene.add(keyLight);
 
-  // Cool twilight blue / warm earth fill light
   const fillLight = new THREE.HemisphereLight(0x232742, 0x140e0a, 0.95);
   scene.add(fillLight);
 
-  // Deep atmosphere fog matching dark corbelled stone
+  // Atmospheric fog
   scene.fog = new THREE.FogExp2(0x0c0c16, 0.045);
 
-  // Master Root Altar Group
   const altarGroup = new THREE.Group();
   scene.add(altarGroup);
 
   // ----------------------------------------------------
-  // 2. REUSABLE PBR MATERIALS
+  // 2. RETRO PBR MATERIALS (NearestFilter Textures)
   // ----------------------------------------------------
   const stoneMat = regMat(new THREE.MeshStandardMaterial({
     map: textures.corbelledStone,
-    bumpMap: textures.corbelledStone,
-    bumpScale: 0.04,
-    roughness: 0.85,
-    metalness: 0.15
+    roughness: 0.88,
+    metalness: 0.1
   }));
 
   const chevronFloorMat = regMat(new THREE.MeshStandardMaterial({
     map: textures.chevronFloor,
-    bumpMap: textures.chevronFloor,
-    bumpScale: 0.035,
-    roughness: 0.8,
-    metalness: 0.1
+    roughness: 0.82,
+    metalness: 0.08
   }));
 
   const woodMat = regMat(new THREE.MeshStandardMaterial({
     map: textures.wood,
-    bumpMap: textures.wood,
-    bumpScale: 0.03,
-    roughness: 0.72,
-    metalness: 0.12
+    roughness: 0.75,
+    metalness: 0.1
   }));
 
   const goldFrameMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0xd4af37,
-    roughness: 0.32,
-    metalness: 0.88
+    color: 0xd97706,
+    roughness: 0.35,
+    metalness: 0.85
   }));
 
   const brassTrimMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0xcd7f32,
-    roughness: 0.38,
-    metalness: 0.72
+    color: 0xb45309,
+    roughness: 0.4,
+    metalness: 0.7
   }));
 
   const waxCandleMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0xfff6e5,
-    roughness: 0.42,
-    metalness: 0.05
+    color: 0xfde68a,
+    roughness: 0.45,
+    metalness: 0.04
   }));
 
   const flameOuterMat = regMat(new THREE.MeshBasicMaterial({
-    color: 0xff7b00,
+    color: 0xf59e0b,
     transparent: true,
-    opacity: 0.88
+    opacity: 0.9
   }));
 
   const flameInnerMat = regMat(new THREE.MeshBasicMaterial({
-    color: 0xfff3a0
+    color: 0xfffbeb
   }));
 
   const flameSpriteMat = regMat(new THREE.SpriteMaterial({
     map: textures.flameGlowSprite,
-    color: 0xff8811,
+    color: 0xf59e0b,
     transparent: true,
     opacity: 0.85,
     blending: THREE.AdditiveBlending,
@@ -179,37 +162,24 @@ export function buildOfrendaScene(
   }));
 
   const marigoldOrangeMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0xff6600,
-    roughness: 0.58,
-    metalness: 0.06
-  }));
-
-  const marigoldYellowMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0xffaa00,
-    roughness: 0.55,
-    metalness: 0.06
-  }));
-
-  const marigoldCalyxMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0x2e5c1e,
-    roughness: 0.8,
+    color: 0xf59e0b,
+    roughness: 0.6,
     metalness: 0.05
   }));
 
   const shadowPlaneMat = regMat(new THREE.MeshBasicMaterial({
     map: textures.contactShadow,
     transparent: true,
-    opacity: 0.65,
+    opacity: 0.75,
     depthWrite: false
   }));
 
   // ----------------------------------------------------
-  // 3. MONUMENTAL CORBELLED STONE ARCH VAULT (Reference Image 3)
+  // 3. LOW-POLY CORBELLED STONE ARCH VAULT
   // ----------------------------------------------------
   const cryptGroup = new THREE.Group();
   altarGroup.add(cryptGroup);
 
-  // Stepped Corbelled Ceiling Arch Ribs (progressive overhang)
   const archSteps = 9;
   for (let i = 0; i < archSteps; i++) {
     const y = 2.0 + i * 0.45;
@@ -218,111 +188,92 @@ export function buildOfrendaScene(
     const thickness = 0.42;
     const depth = 16.0;
 
-    // Left overhang beam
     const leftBeamGeo = regGeo(new THREE.BoxGeometry(2.4, thickness, depth));
     const leftBeam = new THREE.Mesh(leftBeamGeo, stoneMat);
     leftBeam.position.set(-span / 2 - 0.9, y, -0.5);
-    leftBeam.castShadow = true;
-    leftBeam.receiveShadow = true;
     cryptGroup.add(leftBeam);
 
-    // Right overhang beam
     const rightBeamGeo = regGeo(new THREE.BoxGeometry(2.4, thickness, depth));
     const rightBeam = new THREE.Mesh(rightBeamGeo, stoneMat);
     rightBeam.position.set(span / 2 + 0.9, y, -0.5);
-    rightBeam.castShadow = true;
-    rightBeam.receiveShadow = true;
     cryptGroup.add(rightBeam);
   }
 
-  // Vault Apex Capstone with Central Luminous Aperture (Reference Image 3 skylight)
   const capstoneGeo = regGeo(new THREE.BoxGeometry(2.8, 0.4, 16.0));
   const capstone = new THREE.Mesh(capstoneGeo, stoneMat);
   capstone.position.set(0, 6.0, -0.5);
   cryptGroup.add(capstone);
 
-  // Golden Amber Aperture Portal Light at Apex
-  const apertureMat = regMat(new THREE.MeshBasicMaterial({ color: 0xff8c00 }));
+  const apertureMat = regMat(new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
   const apertureMesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(1.4, 0.2, 3.2)), apertureMat);
   apertureMesh.position.set(0, 5.85, -2.5);
   cryptGroup.add(apertureMesh);
 
-  // Aperture ambient glow
-  const apertureLight = new THREE.PointLight(0xff9900, 1.2, 10);
+  // Aperture point light
+  const apertureLight = new THREE.PointLight(0xf59e0b, 1.2, 10);
   apertureLight.position.set(0, 5.5, -2.5);
   cryptGroup.add(apertureLight);
 
-  // Rear Stone Sanctuary Wall & Distant Portal Doorway
+  // Rear wall
   const backWallGeo = regGeo(new THREE.BoxGeometry(12.0, 7.0, 0.6));
   const backWall = new THREE.Mesh(backWallGeo, stoneMat);
   backWall.position.set(0, 3.5, -6.5);
-  backWall.receiveShadow = true;
   cryptGroup.add(backWall);
 
-  // Distant glowing sanctuary portal in the back wall
-  const portalGlowMat = regMat(new THREE.MeshBasicMaterial({ color: 0xff6600 }));
+  // Distant glowing portal
+  const portalGlowMat = regMat(new THREE.MeshBasicMaterial({ color: 0xd97706 }));
   const portalMesh = new THREE.Mesh(regGeo(new THREE.PlaneGeometry(1.6, 3.2)), portalGlowMat);
   portalMesh.position.set(0, 1.6, -6.18);
   cryptGroup.add(portalMesh);
 
-  // Left & Right Flanking Ashlar Stone Walls
+  // Side walls
   const sideWallGeo = regGeo(new THREE.BoxGeometry(0.8, 6.0, 16.0));
   const leftWall = new THREE.Mesh(sideWallGeo, stoneMat);
   leftWall.position.set(-6.2, 3.0, -0.5);
-  leftWall.receiveShadow = true;
   cryptGroup.add(leftWall);
 
   const rightWall = new THREE.Mesh(sideWallGeo, stoneMat);
   rightWall.position.set(6.2, 3.0, -0.5);
-  rightWall.receiveShadow = true;
   cryptGroup.add(rightWall);
 
   // ----------------------------------------------------
-  // 4. CHEVRON HERRINGBONE STONE FLOOR (Reference Image 3)
+  // 4. CHEVRON FLOOR
   // ----------------------------------------------------
   const floorGeo = regGeo(new THREE.PlaneGeometry(14.0, 16.0));
   const floorMesh = new THREE.Mesh(floorGeo, chevronFloorMat);
   floorMesh.rotation.x = -Math.PI / 2;
   floorMesh.position.set(0, -0.01, -0.5);
-  floorMesh.receiveShadow = true;
   altarGroup.add(floorMesh);
 
   // ----------------------------------------------------
-  // 5. 3-TIER SOVEREIGN OFRENDA ALTAR (Composite Model)
+  // 5. 3-TIER ALTAR
   // ----------------------------------------------------
-  // Soft contact shadow under altar
   const shadowMesh = new THREE.Mesh(regGeo(new THREE.PlaneGeometry(7.0, 4.5)), shadowPlaneMat);
   shadowMesh.rotation.x = -Math.PI / 2;
   shadowMesh.position.set(0, 0.01, 0.2);
   altarGroup.add(shadowMesh);
 
-  // Tier 1 (Base - Earthly Realm)
+  // Tier 1
   const tier1Mesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(5.0, 0.72, 2.4)), woodMat);
   tier1Mesh.position.set(0, 0.36, 0.2);
-  tier1Mesh.castShadow = true;
-  tier1Mesh.receiveShadow = true;
   altarGroup.add(tier1Mesh);
 
   const trim1Mesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(5.12, 0.08, 2.52)), brassTrimMat);
   trim1Mesh.position.set(0, 0.72, 0.2);
   altarGroup.add(trim1Mesh);
 
-  // Tier 2 (Middle - Passage Realm)
+  // Tier 2
   const tier2Mesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(3.8, 0.72, 1.6)), woodMat);
   tier2Mesh.position.set(0, 1.08, -0.15);
-  tier2Mesh.castShadow = true;
-  tier2Mesh.receiveShadow = true;
   altarGroup.add(tier2Mesh);
 
   const trim2Mesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(3.92, 0.08, 1.72)), brassTrimMat);
   trim2Mesh.position.set(0, 1.44, -0.15);
   altarGroup.add(trim2Mesh);
 
-  // Tier 3 (Top - Celestial Realm)
+  // Tier 3
   const tier3Mesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(2.6, 0.72, 1.0)), woodMat);
   tier3Mesh.position.set(0, 1.8, -0.45);
-  tier3Mesh.castShadow = true;
-  tier3Mesh.receiveShadow = true;
   altarGroup.add(tier3Mesh);
 
   const trim3Mesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(2.7, 0.08, 1.08)), brassTrimMat);
@@ -330,8 +281,7 @@ export function buildOfrendaScene(
   altarGroup.add(trim3Mesh);
 
   // ----------------------------------------------------
-  // 6. OVERHEAD PAPEL PICADO BUNTING ARRAY (Reference Image 1)
-  // Double catenary cables spanning the sanctuary vault with waving banners
+  // 6. PAPEL PICADO OVERHEAD BUNTING
   // ----------------------------------------------------
   const buntingGroup = new THREE.Group();
   altarGroup.add(buntingGroup);
@@ -340,14 +290,13 @@ export function buildOfrendaScene(
     const bannerW = 0.42;
     const bannerH = 0.58;
     const totalSpan = 8.8;
-    const bannerCount = 14;
+    const bannerCount = 12;
     const startX = -totalSpan / 2;
     const stepX = totalSpan / (bannerCount - 1);
 
     for (let i = 0; i < bannerCount; i++) {
       const x = startX + i * stepX;
-      // Catenary curve dip
-      const norm = (x / (totalSpan / 2));
+      const norm = x / (totalSpan / 2);
       const y = yBase - Math.cos(norm * (Math.PI / 2.2)) * sag;
 
       const tex = textures.papelPicado[i % textures.papelPicado.length];
@@ -362,95 +311,75 @@ export function buildOfrendaScene(
       const bannerMesh = new THREE.Mesh(regGeo(new THREE.PlaneGeometry(bannerW, bannerH)), bannerMat);
       bannerMesh.position.set(x, y - bannerH * 0.48, zPos);
       bannerMesh.rotation.x = 0.15 * Math.sin(i * 1.2 + zPos);
-      bannerMesh.rotation.y = 0.08 * Math.cos(i * 0.9);
       buntingGroup.add(bannerMesh);
     }
   };
 
-  // Foreground overhead banner row
   createOverheadBunting(2.4, 4.8, 0.65);
-  // Midground overhead banner row
   createOverheadBunting(0.8, 5.1, 0.55);
-  // Rear overhead banner row above altar
   createOverheadBunting(-1.2, 5.3, 0.45);
 
   // ----------------------------------------------------
-  // 7. SYMMETRICAL CANDLE COLONNADE (Colonnade along Chevron Path)
-  // Uses billboard halo sprites for zero-cost radiant luminosity
+  // 7. LOW-POLY CANDLE COLONNADE (6 Radial Segments)
   // ----------------------------------------------------
   const createCandle = (
     x: number,
     y: number,
     z: number,
     height: number,
-    id: string,
-    hasRealLight: boolean = false
+    id: string
   ): THREE.Group => {
     const candleGroup = new THREE.Group();
     candleGroup.position.set(x, y, z);
     candleGroup.name = id;
 
-    // Stone / Cast-iron base sconce
+    // Sconce base: 6 segments
     const sconceMat = regMat(new THREE.MeshStandardMaterial({
-      color: 0x181512,
-      roughness: 0.88,
+      color: 0x12141f,
+      roughness: 0.9,
       metalness: 0.2
     }));
-    const sconceMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.09, 0.11, 0.04, 12)), sconceMat);
+    const sconceMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.09, 0.11, 0.04, 6)), sconceMat);
     sconceMesh.position.y = 0.02;
     candleGroup.add(sconceMesh);
 
-    // Wax body
-    const bodyMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.06, 0.065, height, 14)), waxCandleMat);
+    // Wax body: 6 segments
+    const bodyMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.06, 0.065, height, 6)), waxCandleMat);
     bodyMesh.position.y = height / 2 + 0.04;
-    bodyMesh.castShadow = hasRealLight;
     candleGroup.add(bodyMesh);
 
-    // Wax drips
-    for (let d = 0; d < 3; d++) {
-      const drip = new THREE.Mesh(regGeo(new THREE.SphereGeometry(0.022, 6, 6)), waxCandleMat);
-      const angle = (d * Math.PI * 2) / 3;
+    // Wax drips: 4 segments
+    for (let d = 0; d < 2; d++) {
+      const drip = new THREE.Mesh(regGeo(new THREE.SphereGeometry(0.022, 4, 4)), waxCandleMat);
+      const angle = (d * Math.PI * 2) / 2;
       drip.position.set(
         Math.cos(angle) * 0.055,
-        height * 0.7 - d * 0.08,
+        height * 0.7 - d * 0.1,
         Math.sin(angle) * 0.055
       );
       candleGroup.add(drip);
     }
 
-    // Flame Core (tear shape)
-    const flameMesh = new THREE.Mesh(regGeo(new THREE.ConeGeometry(0.028, 0.09, 10)), flameOuterMat);
+    // Flame Cone: 6 segments
+    const flameMesh = new THREE.Mesh(regGeo(new THREE.ConeGeometry(0.028, 0.09, 6)), flameOuterMat);
     flameMesh.position.y = height + 0.08;
     candleGroup.add(flameMesh);
 
-    const flameInner = new THREE.Mesh(regGeo(new THREE.ConeGeometry(0.016, 0.05, 8)), flameInnerMat);
+    const flameInner = new THREE.Mesh(regGeo(new THREE.ConeGeometry(0.016, 0.05, 5)), flameInnerMat);
     flameInner.position.y = height + 0.065;
     candleGroup.add(flameInner);
 
-    // Soft luminous billboard halo sprite (radiant candle glow without GPU load)
+    // Additive pixel halo sprite
     const haloSprite = new THREE.Sprite(flameSpriteMat);
     haloSprite.position.y = height + 0.08;
     haloSprite.scale.set(0.65, 0.65, 1.0);
     candleGroup.add(haloSprite);
 
-    // Throttled point light: only active if explicitly enabled (focus candles)
-    let pLight: THREE.PointLight | undefined;
-    if (hasRealLight) {
-      pLight = new THREE.PointLight(0xff9922, 1.3, 4.5);
-      pLight.position.y = height + 0.12;
-      pLight.castShadow = true;
-      pLight.shadow.bias = -0.001;
-      pLight.shadow.mapSize.width = 512;
-      pLight.shadow.mapSize.height = 512;
-      candleGroup.add(pLight);
-    }
-
     candles.push({
-      light: pLight,
       flameMesh,
       flameInner,
       haloSprite,
-      baseIntensity: hasRealLight ? 1.3 : 0.8,
+      baseIntensity: 0.85,
       flickerSpeed: 3.0 + Math.random() * 4.0,
       flickerOffset: Math.random() * Math.PI * 2,
       id
@@ -460,68 +389,58 @@ export function buildOfrendaScene(
     return candleGroup;
   };
 
-  // Colonnade rows flanking the chevron pathway (Reference Image 3)
+  // Colonnade rows flanking pathway
   const pathZ = [4.2, 3.4, 2.6, 1.8, 1.0, 0.2];
   for (let idx = 0; idx < pathZ.length; idx++) {
     const z = pathZ[idx];
     const hLeft = 0.35 + (idx % 3) * 0.12;
     const hRight = 0.32 + ((idx + 1) % 3) * 0.14;
-    // Left colonnade
-    createCandle(-2.1, 0, z, hLeft, `colonnade_left_${idx}`, idx === 1);
-    // Right colonnade
-    createCandle(2.1, 0, z, hRight, `colonnade_right_${idx}`, idx === 1);
+    createCandle(-2.1, 0, z, hLeft, `colonnade_left_${idx}`);
+    createCandle(2.1, 0, z, hRight, `colonnade_right_${idx}`);
   }
 
-  // Altar Step Candles
-  createCandle(-2.2, 0.72, 1.25, 0.42, 'altar_c_1', true);
-  createCandle(2.2, 0.72, 1.25, 0.42, 'altar_c_2', false);
-  createCandle(-1.6, 1.44, 0.5, 0.38, 'altar_c_3', false);
-  createCandle(1.6, 1.44, 0.5, 0.38, 'altar_c_4', false);
-  createCandle(-0.9, 2.16, -0.15, 0.32, 'altar_c_5', false);
-  createCandle(0.9, 2.16, -0.15, 0.32, 'altar_c_6', false);
+  // Altar step candles
+  createCandle(-2.2, 0.72, 1.25, 0.42, 'altar_c_1');
+  createCandle(2.2, 0.72, 1.25, 0.42, 'altar_c_2');
+  createCandle(-1.6, 1.44, 0.5, 0.38, 'altar_c_3');
+  createCandle(1.6, 1.44, 0.5, 0.38, 'altar_c_4');
+  createCandle(-0.9, 2.16, -0.15, 0.32, 'altar_c_5');
+  createCandle(0.9, 2.16, -0.15, 0.32, 'altar_c_6');
 
   // ----------------------------------------------------
-  // 8. HIGH-FIDELITY CEMPASÚCHIL MARIGOLD BANKS (Reference Images 1 & 2)
-  // Multi-layered serrated flowers and dense banks lining the pathway & tiers
+  // 8. CEMPASÚCHIL FLOWER BANKS (Low-Poly 6-Segment Instanced)
   // ----------------------------------------------------
   const flowerGroup = new THREE.Group();
   altarGroup.add(flowerGroup);
 
-  // Instanced marigold blooms for pathway borders
-  const flowerCount = 90;
-  const flowerGeo = regGeo(new THREE.CylinderGeometry(0.11, 0.06, 0.06, 12));
+  const flowerCount = 60;
+  const flowerGeo = regGeo(new THREE.CylinderGeometry(0.11, 0.06, 0.06, 6));
   const flowerInstanced = new THREE.InstancedMesh(flowerGeo, marigoldOrangeMat, flowerCount);
-  flowerInstanced.castShadow = true;
-  flowerInstanced.receiveShadow = true;
 
   const dummy = new THREE.Object3D();
   let flowerIdx = 0;
 
-  // Dense flower banks flanking the chevron pathway
-  for (let z = 4.4; z >= 0.2; z -= 0.32) {
+  for (let z = 4.4; z >= 0.2; z -= 0.42) {
     if (flowerIdx >= flowerCount - 2) break;
 
-    // Left bank
-    const lx = -2.5 - Math.random() * 0.4;
-    dummy.position.set(lx, 0.08 + Math.random() * 0.06, z);
-    dummy.scale.setScalar(0.85 + Math.random() * 0.35);
-    dummy.rotation.set(Math.random() * 0.2, Math.random() * Math.PI, Math.random() * 0.2);
+    const lx = -2.5 - Math.random() * 0.3;
+    dummy.position.set(lx, 0.08, z);
+    dummy.scale.setScalar(0.85 + Math.random() * 0.3);
+    dummy.rotation.set(0, Math.random() * Math.PI, 0);
     dummy.updateMatrix();
     flowerInstanced.setMatrixAt(flowerIdx++, dummy.matrix);
 
-    // Right bank
-    const rx = 2.5 + Math.random() * 0.4;
-    dummy.position.set(rx, 0.08 + Math.random() * 0.06, z);
-    dummy.scale.setScalar(0.85 + Math.random() * 0.35);
-    dummy.rotation.set(Math.random() * 0.2, Math.random() * Math.PI, Math.random() * 0.2);
+    const rx = 2.5 + Math.random() * 0.3;
+    dummy.position.set(rx, 0.08, z);
+    dummy.scale.setScalar(0.85 + Math.random() * 0.3);
+    dummy.rotation.set(0, Math.random() * Math.PI, 0);
     dummy.updateMatrix();
     flowerInstanced.setMatrixAt(flowerIdx++, dummy.matrix);
   }
 
-  // Tier 1 front border flowers
-  for (let x = -2.3; x <= 2.3; x += 0.26) {
+  for (let x = -2.2; x <= 2.2; x += 0.35) {
     if (flowerIdx >= flowerCount) break;
-    dummy.position.set(x, 0.76, 1.35 + (Math.random() - 0.5) * 0.1);
+    dummy.position.set(x, 0.76, 1.35);
     dummy.scale.setScalar(0.8 + Math.random() * 0.3);
     dummy.rotation.set(0.1, Math.random() * Math.PI, 0);
     dummy.updateMatrix();
@@ -531,27 +450,8 @@ export function buildOfrendaScene(
   flowerInstanced.instanceMatrix.needsUpdate = true;
   flowerGroup.add(flowerInstanced);
 
-  // Scattered Petals along Central Pathway (Cempasúchil carpet)
-  const carpetPetalCount = 140;
-  const carpetPetalGeo = regGeo(new THREE.PlaneGeometry(0.08, 0.05));
-  const carpetPetalInst = new THREE.InstancedMesh(carpetPetalGeo, marigoldOrangeMat, carpetPetalCount);
-  carpetPetalInst.rotation.x = -Math.PI / 2;
-
-  for (let i = 0; i < carpetPetalCount; i++) {
-    const px = (Math.random() - 0.5) * 2.8;
-    const pz = -0.2 + Math.random() * 4.6;
-    dummy.position.set(px, pz, 0.005 + (i % 5) * 0.001); // in rotated space
-    dummy.rotation.set(0, 0, Math.random() * Math.PI * 2);
-    dummy.scale.setScalar(0.7 + Math.random() * 0.6);
-    dummy.updateMatrix();
-    carpetPetalInst.setMatrixAt(i, dummy.matrix);
-  }
-  carpetPetalInst.instanceMatrix.needsUpdate = true;
-  altarGroup.add(carpetPetalInst);
-
   // ----------------------------------------------------
   // 9. DEDICATED INTERACTIVE MEMORIAL OFFERINGS
-  // All added to interactiveGroup for laser-focused raycasting
   // ----------------------------------------------------
   const createNicho = (
     x: number,
@@ -577,7 +477,7 @@ export function buildOfrendaScene(
     const portraitMat = regMat(new THREE.MeshStandardMaterial({
       map: portraitTex,
       roughness: 0.45,
-      metalness: 0.1
+      metalness: 0.05
     }));
     const portraitMesh = new THREE.Mesh(regGeo(new THREE.PlaneGeometry(frameW - 0.09, frameH - 0.09)), portraitMat);
     portraitMesh.position.z = 0.025;
@@ -587,7 +487,7 @@ export function buildOfrendaScene(
     const backMesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(frameW, frameH, 0.035)), woodMat);
     nichoGroup.add(backMesh);
 
-    // Gilded Frame Borders
+    // Stepped Gilded Frame Borders
     const topBar = new THREE.Mesh(regGeo(new THREE.BoxGeometry(frameW + 0.05, borderThick, 0.05)), goldFrameMat);
     topBar.position.set(0, frameH / 2, 0.02);
     nichoGroup.add(topBar);
@@ -604,7 +504,7 @@ export function buildOfrendaScene(
     rightBar.position.set(frameW / 2, 0, 0.02);
     nichoGroup.add(rightBar);
 
-    // Ornate crown pediment on top of nicho
+    // Stepped Crown: 4-sided pyramid
     const crownGeo = regGeo(new THREE.ConeGeometry(0.14, 0.16, 4));
     crownGeo.rotateY(Math.PI / 4);
     const crownMesh = new THREE.Mesh(crownGeo, goldFrameMat);
@@ -624,26 +524,22 @@ export function buildOfrendaScene(
     });
 
     interactiveGroup.add(nichoGroup);
+    relicGroups.set(id, nichoGroup);
     return nichoGroup;
   };
 
-  // Top Tier Centerpiece: Abuela Elena
-  createNicho(0, 2.52, -0.38, 0, 'Elena Reyes', '1924 – 2012 • Matriarch', 'nicho_elena', 'mem_001');
+  createNicho(0, 2.52, -0.38, 0, 'Elena Reyes', '1924–2012 • Matriarch', 'nicho_elena', 'mem_001');
+  createNicho(-0.95, 1.82, -0.05, 0.18, 'Mateo Reyes', '1920–1998 • Patriarch', 'nicho_mateo', 'mem_003');
+  createNicho(0.95, 1.82, -0.05, -0.18, 'Tío Héctor', '1948–2016 • Musician', 'nicho_hector', 'mem_002');
+  createNicho(-1.85, 1.1, 0.7, 0.28, 'Rosa Reyes', '1952–2020 • Chronicler', 'nicho_rosa', 'mem_004');
+  createNicho(1.85, 1.1, 0.7, -0.28, 'Dr. Sofia Reyes', '1975–Now • Healer', 'nicho_sofia', 'mem_008');
 
-  // Tier 2 Nichos: Abuelo Mateo & Tío Héctor
-  createNicho(-0.95, 1.82, -0.05, 0.18, 'Mateo Reyes', '1920 – 1998 • Patriarch', 'nicho_mateo', 'mem_003');
-  createNicho(0.95, 1.82, -0.05, -0.18, 'Tío Héctor', '1948 – 2016 • Musician', 'nicho_hector', 'mem_002');
-
-  // Tier 1 Nichos: Rosa & Sofia
-  createNicho(-1.85, 1.1, 0.7, 0.28, 'Rosa Reyes', '1952 – 2020 • Chronicler', 'nicho_rosa', 'mem_004');
-  createNicho(1.85, 1.1, 0.7, -0.28, 'Dr. Sofia Reyes', '1975 – Present • Healer', 'nicho_sofia', 'mem_008');
-
-  // Calavera de Azúcar (Sugar Skull)
+  // Low-Poly Calavera de Azúcar (8 Segments)
   const calaveraGroup = new THREE.Group();
   calaveraGroup.position.set(0, 1.48, 0.35);
   calaveraGroup.scale.setScalar(1.25);
 
-  const craniumGeo = regGeo(new THREE.SphereGeometry(0.16, 20, 20));
+  const craniumGeo = regGeo(new THREE.SphereGeometry(0.16, 8, 8));
   craniumGeo.scale(1.0, 1.15, 0.95);
   const calaveraMat = regMat(new THREE.MeshStandardMaterial({
     map: textures.sugarSkull,
@@ -652,7 +548,6 @@ export function buildOfrendaScene(
   }));
   const craniumMesh = new THREE.Mesh(craniumGeo, calaveraMat);
   craniumMesh.position.y = 0.16;
-  craniumMesh.castShadow = true;
   calaveraGroup.add(craniumMesh);
 
   const jawMesh = new THREE.Mesh(regGeo(new THREE.BoxGeometry(0.18, 0.1, 0.15)), calaveraMat);
@@ -663,41 +558,41 @@ export function buildOfrendaScene(
   craniumMesh.userData = { id: 'offering_calavera', type: 'calavera' };
   clickableMap.set('offering_calavera', {
     id: 'offering_calavera',
-    title: 'Calavera de Azúcar (Sugar Skull)',
+    title: 'Calavera de Azúcar',
     type: 'calavera',
-    description: 'Decorated confection honoring the lightness and sweetness of mortality.',
+    description: 'Decorated sugar skull honoring the sweetness of remembrance.',
     associated_memory_id: 'mem_015',
     tier: 2
   });
   interactiveGroup.add(calaveraGroup);
+  relicGroups.set('offering_calavera', calaveraGroup);
 
-  // Pan de Muerto
+  // Low-Poly Pan de Muerto (8 Segments)
   const panGroup = new THREE.Group();
   panGroup.position.set(-0.75, 0.74, 1.05);
   const breadMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0xc8853b,
-    roughness: 0.82,
+    color: 0xd97706,
+    roughness: 0.85,
     metalness: 0.04
   }));
 
-  const breadBaseGeo = regGeo(new THREE.SphereGeometry(0.18, 16, 12));
+  const breadBaseGeo = regGeo(new THREE.SphereGeometry(0.18, 8, 6));
   breadBaseGeo.scale(1.2, 0.6, 1.2);
   const breadMesh = new THREE.Mesh(breadBaseGeo, breadMat);
   breadMesh.position.y = 0.06;
-  breadMesh.castShadow = true;
   panGroup.add(breadMesh);
 
-  const bone1 = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 8)), breadMat);
+  const bone1 = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 5)), breadMat);
   bone1.rotateZ(Math.PI / 2);
   bone1.position.y = 0.14;
   panGroup.add(bone1);
 
-  const bone2 = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 8)), breadMat);
+  const bone2 = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 5)), breadMat);
   bone2.rotateX(Math.PI / 2);
   bone2.position.y = 0.14;
   panGroup.add(bone2);
 
-  const tearKnob = new THREE.Mesh(regGeo(new THREE.SphereGeometry(0.035, 10, 10)), breadMat);
+  const tearKnob = new THREE.Mesh(regGeo(new THREE.SphereGeometry(0.035, 5, 5)), breadMat);
   tearKnob.position.y = 0.18;
   panGroup.add(tearKnob);
 
@@ -705,50 +600,48 @@ export function buildOfrendaScene(
   breadMesh.userData = { id: 'offering_pan', type: 'pan_de_muerto' };
   clickableMap.set('offering_pan', {
     id: 'offering_pan',
-    title: 'Pan de Muerto (Bread of the Dead)',
+    title: 'Pan de Muerto',
     type: 'pan_de_muerto',
-    description: 'Anise and orange-blossom scented brioche dusted with sugar, baked for departed souls.',
+    description: 'Anise and orange-blossom scented brioche baked for departed souls.',
     associated_memory_id: 'mem_007',
     tier: 1
   });
   interactiveGroup.add(panGroup);
+  relicGroups.set('offering_pan', panGroup);
 
-  // Copal Incense Sahumerio
+  // Copal Sahumerio (8 Segments)
   const copalGroup = new THREE.Group();
   copalGroup.position.set(0.75, 0.74, 1.05);
   const clayMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0x221c19,
+    color: 0x23161c,
     roughness: 0.95,
     metalness: 0.05
   }));
 
-  const bowlMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.12, 0.05, 0.12, 16)), clayMat);
+  const bowlMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.12, 0.05, 0.12, 8)), clayMat);
   bowlMesh.position.y = 0.06;
   copalGroup.add(bowlMesh);
 
-  const emberMat = regMat(new THREE.MeshBasicMaterial({ color: 0xff3b00 }));
-  const emberMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 12)), emberMat);
+  const emberMat = regMat(new THREE.MeshBasicMaterial({ color: 0xd97706 }));
+  const emberMesh = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 6)), emberMat);
   emberMesh.position.y = 0.11;
   copalGroup.add(emberMesh);
-
-  const emberLight = new THREE.PointLight(0xff5500, 0.5, 1.4);
-  emberLight.position.set(0, 0.14, 0);
-  copalGroup.add(emberLight);
 
   interactiveObjects.push(bowlMesh);
   bowlMesh.userData = { id: 'offering_copal', type: 'copal' };
   clickableMap.set('offering_copal', {
     id: 'offering_copal',
-    title: 'Copal Incense Sahumerio',
+    title: 'Copal Sahumerio',
     type: 'copal',
-    description: 'Sacred resin smoke cleansing negative energies and guiding souls with aromatic prayers.',
+    description: 'Sacred resin smoke cleansing negative energies and guiding souls.',
     associated_memory_id: 'mem_007',
     tier: 1
   });
   interactiveGroup.add(copalGroup);
+  relicGroups.set('offering_copal', copalGroup);
 
   // Copal Smoke Particles
-  const smokeCount = 75;
+  const smokeCount = 45;
   const smokePositions = new Float32Array(smokeCount * 3);
   const smokeVelocities = new Float32Array(smokeCount * 3);
   const smokeLifetimes = new Float32Array(smokeCount);
@@ -768,8 +661,8 @@ export function buildOfrendaScene(
   const smokeGeo = regGeo(new THREE.BufferGeometry());
   smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePositions, 3));
   const smokePointsMat = regMat(new THREE.PointsMaterial({
-    color: 0xbaa490,
-    size: 0.08,
+    color: 0xfde68a,
+    size: 0.06,
     transparent: true,
     opacity: 0.35,
     depthWrite: false
@@ -777,22 +670,22 @@ export function buildOfrendaScene(
   const smokePoints = new THREE.Points(smokeGeo, smokePointsMat);
   altarGroup.add(smokePoints);
 
-  // Tío Héctor's Classical Guitar
+  // Low-Poly Guitar (8 Segments)
   const guitarGroup = new THREE.Group();
   guitarGroup.position.set(2.45, 0, 0.85);
   guitarGroup.rotation.set(-0.35, -0.4, 0.2);
 
   const guitarWoodMat = regMat(new THREE.MeshStandardMaterial({
-    color: 0x8b3a1a,
-    roughness: 0.32,
+    color: 0x78350f,
+    roughness: 0.4,
     metalness: 0.1
   }));
 
-  const lowerBout = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.24, 0.24, 0.14, 16)), guitarWoodMat);
+  const lowerBout = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.24, 0.24, 0.14, 8)), guitarWoodMat);
   lowerBout.scale.set(1.0, 1.0, 0.7);
   guitarGroup.add(lowerBout);
 
-  const upperBout = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.18, 0.18, 0.14, 16)), guitarWoodMat);
+  const upperBout = new THREE.Mesh(regGeo(new THREE.CylinderGeometry(0.18, 0.18, 0.14, 8)), guitarWoodMat);
   upperBout.position.y = 0.32;
   upperBout.scale.set(1.0, 1.0, 0.7);
   guitarGroup.add(upperBout);
@@ -805,7 +698,7 @@ export function buildOfrendaScene(
   head.position.set(0, 1.0, 0.02);
   guitarGroup.add(head);
 
-  const rosette = new THREE.Mesh(regGeo(new THREE.CircleGeometry(0.06, 16)), regMat(new THREE.MeshBasicMaterial({ color: 0x050302 })));
+  const rosette = new THREE.Mesh(regGeo(new THREE.CircleGeometry(0.06, 8)), regMat(new THREE.MeshBasicMaterial({ color: 0x07080d })));
   rosette.position.set(0, 0.22, 0.075);
   guitarGroup.add(rosette);
 
@@ -813,18 +706,19 @@ export function buildOfrendaScene(
   lowerBout.userData = { id: 'offering_guitar', type: 'guitar' };
   clickableMap.set('offering_guitar', {
     id: 'offering_guitar',
-    title: "Tío Héctor's Paracho Classical Guitar",
+    title: "Tío Héctor's Classical Guitar",
     type: 'guitar',
-    description: 'Crafted in 1971 of palo escrito by Don Cecilio in Michoacán; played on Veracruz nights.',
+    description: 'Crafted in 1971 of palo escrito in Michoacán; played on Veracruz nights.',
     associated_memory_id: 'mem_002',
     tier: 1
   });
   interactiveGroup.add(guitarGroup);
+  relicGroups.set('offering_guitar', guitarGroup);
 
   // ----------------------------------------------------
-  // 10. SWIRLING AMBIENT CEMPASÚCHIL PETALS
+  // 10. RETRO DRIFTING PETALS (Low Count Instanced)
   // ----------------------------------------------------
-  const petalCount = 200;
+  const petalCount = 80;
   const petalGeo = regGeo(new THREE.PlaneGeometry(0.08, 0.05));
   const petalMat = regMat(new THREE.MeshStandardMaterial({
     map: textures.marigoldPetal,
@@ -851,9 +745,9 @@ export function buildOfrendaScene(
     pRotations[i * 3 + 1] = Math.random() * Math.PI * 2;
     pRotations[i * 3 + 2] = Math.random() * Math.PI * 2;
 
-    pVelocities[i * 3 + 0] = 0.12 + Math.random() * 0.22; // drift X
-    pVelocities[i * 3 + 1] = -(0.2 + Math.random() * 0.32); // fall Y
-    pVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.18; // drift Z
+    pVelocities[i * 3 + 0] = 0.12 + Math.random() * 0.22;
+    pVelocities[i * 3 + 1] = -(0.2 + Math.random() * 0.32);
+    pVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.18;
 
     pScales[i] = 0.6 + Math.random() * 0.8;
 
@@ -887,6 +781,7 @@ export function buildOfrendaScene(
       lifetimes: smokeLifetimes
     },
     clickableMap,
+    relicGroups,
     keyLight,
     fillLight,
     altarGroup,

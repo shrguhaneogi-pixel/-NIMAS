@@ -5,10 +5,11 @@
  * Manages the verification state of the 32 checklist items across all sub-components via React Context.
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import {
   DEFINITION_OF_DONE_ITEMS,
   ChecklistItem,
+  CANONICAL_DOD_IDS,
   loadVerifiedItemIds,
   saveVerifiedItemIds
 } from '../components/Tabs/Phase3BlueprintTab/types';
@@ -16,9 +17,11 @@ import {
 export interface BlueprintStateContextType {
   verifiedIds: Set<string>;
   totalCount: number;
+  totalVerified: number;
   verifiedCount: number;
   progressPercent: number;
   isItemVerified: (id: string) => boolean;
+  verifyItem: (id: string) => void;
   toggleItem: (id: string) => void;
   selectAllCategory: (category: ChecklistItem['category']) => void;
   clearCategory: (category: ChecklistItem['category']) => void;
@@ -37,11 +40,12 @@ export const BlueprintStateProvider: React.FC<{ children: ReactNode }> = ({ chil
     saveVerifiedItemIds(verifiedIds);
   }, [verifiedIds]);
 
-  const isItemVerified = (id: string): boolean => {
+  const isItemVerified = useCallback((id: string): boolean => {
     return verifiedIds.has(id);
-  };
+  }, [verifiedIds]);
 
-  const toggleItem = (id: string) => {
+  const verifyItem = useCallback((id: string) => {
+    if (!CANONICAL_DOD_IDS.has(id)) return;
     setVerifiedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -51,9 +55,12 @@ export const BlueprintStateProvider: React.FC<{ children: ReactNode }> = ({ chil
       }
       return next;
     });
-  };
+  }, []);
 
-  const selectAllCategory = (category: ChecklistItem['category']) => {
+  // Alias for backward compatibility
+  const toggleItem = verifyItem;
+
+  const selectAllCategory = useCallback((category: ChecklistItem['category']) => {
     const categoryItemIds = DEFINITION_OF_DONE_ITEMS
       .filter(i => i.category === category)
       .map(i => i.id);
@@ -63,9 +70,9 @@ export const BlueprintStateProvider: React.FC<{ children: ReactNode }> = ({ chil
       categoryItemIds.forEach(id => next.add(id));
       return next;
     });
-  };
+  }, []);
 
-  const clearCategory = (category: ChecklistItem['category']) => {
+  const clearCategory = useCallback((category: ChecklistItem['category']) => {
     const categoryItemIds = new Set(
       DEFINITION_OF_DONE_ITEMS.filter(i => i.category === category).map(i => i.id)
     );
@@ -75,37 +82,62 @@ export const BlueprintStateProvider: React.FC<{ children: ReactNode }> = ({ chil
       categoryItemIds.forEach(id => next.delete(id));
       return next;
     });
-  };
+  }, []);
 
-  const verifyAll = () => {
-    setVerifiedIds(new Set(DEFINITION_OF_DONE_ITEMS.map(i => i.id)));
-  };
+  const verifyAll = useCallback(() => {
+    setVerifiedIds(new Set(CANONICAL_DOD_IDS));
+  }, []);
 
-  const resetAll = () => {
+  const resetAll = useCallback(() => {
     setVerifiedIds(new Set());
-  };
+  }, []);
 
-  const getItemsByCategory = (category: ChecklistItem['category']): ChecklistItem[] => {
+  const getItemsByCategory = useCallback((category: ChecklistItem['category']): ChecklistItem[] => {
     return DEFINITION_OF_DONE_ITEMS.filter(i => i.category === category);
-  };
+  }, []);
 
   const totalCount = DEFINITION_OF_DONE_ITEMS.length;
-  const verifiedCount = verifiedIds.size;
-  const progressPercent = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
+  // Derived totalVerified calculation, bound strictly to canonical DoD IDs
+  const totalVerified = useMemo(() => {
+    let count = 0;
+    verifiedIds.forEach(id => {
+      if (CANONICAL_DOD_IDS.has(id)) count++;
+    });
+    return count;
+  }, [verifiedIds]);
+
+  const verifiedCount = totalVerified;
+  const progressPercent = totalCount > 0 ? Math.round((totalVerified / totalCount) * 100) : 0;
 
   const contextValue = useMemo<BlueprintStateContextType>(() => ({
     verifiedIds,
     totalCount,
+    totalVerified,
     verifiedCount,
     progressPercent,
     isItemVerified,
+    verifyItem,
     toggleItem,
     selectAllCategory,
     clearCategory,
     verifyAll,
     resetAll,
     getItemsByCategory
-  }), [verifiedIds, totalCount, verifiedCount, progressPercent]);
+  }), [
+    verifiedIds,
+    totalCount,
+    totalVerified,
+    verifiedCount,
+    progressPercent,
+    isItemVerified,
+    verifyItem,
+    toggleItem,
+    selectAllCategory,
+    clearCategory,
+    verifyAll,
+    resetAll,
+    getItemsByCategory
+  ]);
 
   return (
     <BlueprintStateContext.Provider value={contextValue}>

@@ -215,15 +215,22 @@ export const DEFINITION_OF_DONE_ITEMS: ChecklistItem[] = [
   }
 ];
 
+export const CANONICAL_DOD_IDS = new Set<string>(DEFINITION_OF_DONE_ITEMS.map(i => i.id));
+
 const STORAGE_KEY = 'animas_dod_verification_v1';
 
 export function loadVerifiedItemIds(): Set<string> {
+  if (typeof window === 'undefined') {
+    return new Set();
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return new Set(parsed);
+        // Strict filtration against canonical 32 DoD IDs
+        const validIds = parsed.filter((id): id is string => typeof id === 'string' && CANONICAL_DOD_IDS.has(id));
+        return new Set(validIds);
       }
     }
   } catch (err) {
@@ -233,8 +240,12 @@ export function loadVerifiedItemIds(): Set<string> {
 }
 
 export function saveVerifiedItemIds(ids: Set<string>): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ids)));
+    const validArray = Array.from(ids).filter(id => CANONICAL_DOD_IDS.has(id));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(validArray));
   } catch (err) {
     console.warn('LocalStorage save failed:', err);
   }

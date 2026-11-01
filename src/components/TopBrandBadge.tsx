@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { ShieldCheck, Sparkles, Layers } from 'lucide-react';
+import { CempasuchilRosette } from './UI/SacredIcons';
 
 interface TopBrandBadgeProps {
   onOpenWorkbench: () => void;
@@ -22,7 +23,7 @@ export const TopBrandBadge: React.FC<TopBrandBadgeProps> = ({
       <div className="bg-stone-950/90 border border-stone-800/80 rounded-2xl p-3.5 shadow-2xl max-w-sm">
         <div className="flex items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🌺</span>
+            <CempasuchilRosette className="w-5 h-5 text-amber-400" />
             <div>
               <h1 className="font-serif font-bold text-amber-200 text-sm tracking-wide">
                 ÁNIMAS

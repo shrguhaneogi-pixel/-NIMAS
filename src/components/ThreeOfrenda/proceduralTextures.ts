@@ -1,9 +1,9 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * ÁNIMAS: The Sovereign 3D Ofrenda - Procedural Textures
- * Zero external image dependencies (zero 404s). Generated via HTML5 Canvas.
- * Supports asynchronous yielding to prevent main-thread freezing.
+ * ÁNIMAS: The Sovereign 3D Ofrenda - Procedural Pixel Textures
+ * 16-Bit Sacred Aesthetic with 4x4 Ordered Bayer Matrix Dithering & Color Quantization.
+ * 64x64 / 128x128 Internal Resolution, NearestFilter, Zero Mipmap Overhead.
  */
 
 import * as THREE from 'three';
@@ -18,555 +18,658 @@ export interface ProceduralTextureSet {
   marigoldPetal: THREE.CanvasTexture;
   papelPicado: THREE.CanvasTexture[];
   portraits: Map<string, THREE.CanvasTexture>;
+  noiseNormalMap: THREE.CanvasTexture;
+  thermalGradientRamp: THREE.CanvasTexture;
   allTextures: THREE.CanvasTexture[];
 }
 
-/** Yield to main thread to ensure smooth UI and 60fps frame pacing */
-export const yieldToMain = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+/** Yield to main thread to guarantee 60fps frame pacing during startup */
+export const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+// ----------------------------------------------------
+// 16-COLOR DÍA DE LOS MUERTOS SACRED PALETTE
+// ----------------------------------------------------
+export interface RGBColor {
+  r: number;
+  g: number;
+  b: number;
+  hex: string;
+}
+
+export const SACRED_PALETTE: RGBColor[] = [
+  { r: 7, g: 8, b: 13, hex: '#07080d' },       // 0: Obsidian Void
+  { r: 18, g: 20, b: 31, hex: '#12141f' },     // 1: Midnight Deep
+  { r: 35, g: 22, b: 28, hex: '#23161c' },     // 2: Sacred Copal
+  { r: 74, g: 21, b: 37, hex: '#4a1525' },     // 3: Dried Dahlia Wine
+  { r: 120, g: 53, b: 15, hex: '#78350f' },    // 4: Terracotta Earth
+  { r: 161, g: 98, b: 7, hex: '#a16207' },     // 5: Aged Cempasúchil
+  { r: 217, g: 119, b: 6, hex: '#d97706' },    // 6: Golden Sun Gold
+  { r: 245, g: 158, b: 11, hex: '#f59e0b' },   // 7: Luminous Marigold
+  { r: 253, g: 230, b: 138, hex: '#fde68a' },  // 8: Candle Wax Amber
+  { r: 255, g: 251, b: 235, hex: '#fffbeb' },  // 9: Bone White
+  { r: 112, g: 26, b: 117, hex: '#701a75' },   // 10: Mystic Velvet Purple
+  { r: 162, g: 28, b: 175, hex: '#a21caf' },   // 11: Papel Picado Magenta
+  { r: 236, g: 72, b: 153, hex: '#ec4899' },   // 12: Ceremonial Rose
+  { r: 14, g: 116, b: 144, hex: '#0e7490' },   // 13: Spirit Turquoise
+  { r: 6, g: 182, b: 212, hex: '#06b6d4' },    // 14: Ancestral Cyan
+  { r: 16, g: 185, b: 129, hex: '#10b981' }    // 15: Sacred Agave Green
+];
+
+// 4x4 Bayer Matrix for Ordered Dithering
+const BAYER_4X4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5]
+];
 
 /**
- * Procedural aged basalt/granite corbelled stone texture with mortar joints and chisel grain
+ * Quantize an RGB pixel with 4x4 Bayer matrix ordered dithering
  */
-export function createCorbelledStoneTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d')!;
+function applyBayerDither(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  ditherStrength = 36,
+  preserveAlpha = true
+) {
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const data = imgData.data;
 
-  // Deep obsidian/basalt dark stone base
-  ctx.fillStyle = '#161821';
-  ctx.fillRect(0, 0, 512, 512);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const alpha = data[idx + 3];
 
-  // Stone grain noise
-  for (let i = 0; i < 2400; i++) {
-    const x = Math.random() * 512;
-    const y = Math.random() * 512;
-    const s = 1 + Math.random() * 3;
-    const lum = Math.floor(25 + Math.random() * 35);
-    ctx.fillStyle = `rgb(${lum}, ${lum + 2}, ${lum + 8})`;
-    ctx.fillRect(x, y, s, s);
-  }
+      if (preserveAlpha && alpha < 32) {
+        data[idx + 3] = 0;
+        continue;
+      }
 
-  // Stone blocks / horizontal courses with mortar
-  const courseHeight = 64;
-  for (let y = 0; y <= 512; y += courseHeight) {
-    // Mortar shadow line
-    ctx.strokeStyle = '#08090d';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(512, y);
-    ctx.stroke();
+      const bayerVal = (BAYER_4X4[y % 4][x % 4] / 16.0 - 0.5) * ditherStrength;
 
-    // Mortar highlight edge
-    ctx.strokeStyle = 'rgba(70, 75, 95, 0.25)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, y + 2);
-    ctx.lineTo(512, y + 2);
-    ctx.stroke();
+      const r = Math.min(255, Math.max(0, data[idx + 0] + bayerVal));
+      const g = Math.min(255, Math.max(0, data[idx + 1] + bayerVal));
+      const b = Math.min(255, Math.max(0, data[idx + 2] + bayerVal));
 
-    // Vertical joints staggered
-    const offset = (y / courseHeight) % 2 === 0 ? 0 : 128;
-    for (let x = offset; x <= 512; x += 256) {
-      ctx.strokeStyle = '#08090d';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x, y + courseHeight);
-      ctx.stroke();
+      // Find closest color in SACRED_PALETTE by Euclidean distance
+      let minDist = Infinity;
+      let best = SACRED_PALETTE[0];
+
+      for (let i = 0; i < SACRED_PALETTE.length; i++) {
+        const pal = SACRED_PALETTE[i];
+        // Weighted perception distance (Red: 0.3, Green: 0.59, Blue: 0.11)
+        const dr = r - pal.r;
+        const dg = g - pal.g;
+        const db = b - pal.b;
+        const dist = dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11;
+        if (dist < minDist) {
+          minDist = dist;
+          best = pal;
+        }
+      }
+
+      data[idx + 0] = best.r;
+      data[idx + 1] = best.g;
+      data[idx + 2] = best.b;
+      if (preserveAlpha && alpha >= 32) {
+        data[idx + 3] = 255;
+      }
     }
   }
 
-  // Subtle chisel marks
-  ctx.strokeStyle = 'rgba(100, 110, 140, 0.12)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 300; i++) {
-    const cx = Math.random() * 512;
-    const cy = Math.random() * 512;
-    const angle = 0.2 + (Math.random() - 0.5) * 0.4;
-    const len = 12 + Math.random() * 20;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
-    ctx.stroke();
+  ctx.putImageData(imgData, 0, 0);
+}
+
+/** Configures a canvas texture with crisp nearest-neighbor retro sampling */
+function setupPixelTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+/**
+ * 64x64 Dithered Basalt / Corbelled Stone Texture
+ */
+export function createCorbelledStoneTexture(): THREE.CanvasTexture {
+  const w = 64, h = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#161821';
+  ctx.fillRect(0, 0, w, h);
+
+  // Stepped stone block horizontal seams
+  for (let y = 0; y < h; y += 16) {
+    ctx.fillStyle = '#07080d';
+    ctx.fillRect(0, y, w, 2);
+
+    ctx.fillStyle = '#32374e';
+    ctx.fillRect(0, y + 2, w, 1);
+
+    // Vertical joints staggered
+    const offset = (y / 16) % 2 === 0 ? 0 : 16;
+    for (let x = offset; x < w; x += 32) {
+      ctx.fillStyle = '#07080d';
+      ctx.fillRect(x, y, 2, 16);
+      ctx.fillStyle = '#32374e';
+      ctx.fillRect(x + 2, y, 1, 16);
+    }
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
+  // Chiseled flecks
+  for (let i = 0; i < 40; i++) {
+    const rx = Math.floor(Math.random() * w);
+    const ry = Math.floor(Math.random() * h);
+    ctx.fillStyle = Math.random() > 0.5 ? '#23161c' : '#3c4465';
+    ctx.fillRect(rx, ry, 2, 1);
+  }
+
+  applyBayerDither(ctx, w, h, 28, false);
+
+  const texture = setupPixelTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   return texture;
 }
 
 /**
- * Procedural deep slate chevron herringbone floor texture (inspired by reference image 3)
+ * 64x64 Dithered Chevron Herringbone Stone Floor Texture
  */
 export function createChevronFloorTexture(): THREE.CanvasTexture {
+  const w = 64, h = 64;
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // Deep slate background
   ctx.fillStyle = '#0f1118';
-  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillRect(0, 0, w, h);
 
-  // Chevron herringbone stone pavers
-  const chevronW = 64;
-  const chevronH = 32;
-
-  ctx.lineWidth = 2.5;
-
-  for (let y = -chevronH * 2; y <= 512 + chevronH * 2; y += chevronH) {
-    for (let x = 0; x < 512; x += chevronW) {
-      const isLeft = (x / chevronW) % 2 === 0;
-
-      // Color variation across slate pavers
-      const shade = 18 + Math.floor(Math.sin(x * 0.05 + y * 0.08) * 8 + Math.random() * 6);
-      ctx.fillStyle = `rgb(${shade}, ${shade + 2}, ${shade + 6})`;
+  const cw = 16, ch = 8;
+  for (let y = 0; y < h; y += ch) {
+    for (let x = 0; x < w; x += cw) {
+      const isLeft = (x / cw) % 2 === 0;
+      ctx.fillStyle = (x + y) % 16 === 0 ? '#1b1e2c' : '#141724';
 
       ctx.beginPath();
       if (isLeft) {
         ctx.moveTo(x, y);
-        ctx.lineTo(x + chevronW, y + chevronH);
-        ctx.lineTo(x + chevronW, y + chevronH + 28);
-        ctx.lineTo(x, y + 28);
+        ctx.lineTo(x + cw, y + ch);
+        ctx.lineTo(x + cw, y + ch + 6);
+        ctx.lineTo(x, y + 6);
       } else {
-        ctx.moveTo(x, y + chevronH);
-        ctx.lineTo(x + chevronW, y);
-        ctx.lineTo(x + chevronW, y + 28);
-        ctx.lineTo(x, y + chevronH + 28);
+        ctx.moveTo(x, y + ch);
+        ctx.lineTo(x + cw, y);
+        ctx.lineTo(x + cw, y + 6);
+        ctx.lineTo(x, y + ch + 6);
       }
       ctx.closePath();
       ctx.fill();
 
-      // Stone paver outline
-      ctx.strokeStyle = '#07080b';
-      ctx.stroke();
-
-      // Top bevel highlight
-      ctx.strokeStyle = 'rgba(75, 85, 110, 0.2)';
-      ctx.beginPath();
-      if (isLeft) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + chevronW, y + chevronH);
-      } else {
-        ctx.moveTo(x, y + chevronH);
-        ctx.lineTo(x + chevronW, y);
-      }
+      ctx.strokeStyle = '#07080d';
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
   }
 
-  // Stone surface speckle
-  for (let i = 0; i < 1500; i++) {
-    const rx = Math.random() * 512;
-    const ry = Math.random() * 512;
-    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0, 0, 0, 0.25)' : 'rgba(90, 105, 130, 0.15)';
-    ctx.fillRect(rx, ry, 1.5, 1.5);
-  }
+  applyBayerDither(ctx, w, h, 24, false);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
+  const texture = setupPixelTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   return texture;
 }
 
 /**
- * Procedural Mexican dark cedar wood grain texture
+ * 64x64 Dithered Mexican Cedar Wood Grain Texture
  */
 export function createWoodTexture(): THREE.CanvasTexture {
+  const w = 64, h = 64;
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // Base rich dark cedar
   ctx.fillStyle = '#2c1810';
-  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillRect(0, 0, w, h);
 
-  // Planks and grain rings
-  for (let y = 0; y < 512; y += 4) {
-    const alpha = 0.08 + Math.sin(y * 0.05) * 0.04 + Math.random() * 0.05;
-    ctx.fillStyle = `rgba(18, 9, 5, ${alpha})`;
-    ctx.fillRect(0, y, 512, 2);
+  // Horizontal wood grain bands
+  for (let y = 0; y < h; y += 4) {
+    ctx.fillStyle = y % 8 === 0 ? '#451a03' : '#1b0e07';
+    ctx.fillRect(0, y, w, 2);
   }
 
-  // Fine wood fibers
-  for (let i = 0; i < 400; i++) {
-    const x = Math.random() * 512;
-    const y = Math.random() * 512;
-    const len = 30 + Math.random() * 80;
-    ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(74, 38, 22, 0.25)' : 'rgba(25, 12, 6, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.bezierCurveTo(x + 5, y + len * 0.5, x - 5, y + len * 0.8, x, y + len);
-    ctx.stroke();
-  }
+  // Plank edge border
+  ctx.fillStyle = '#07080d';
+  ctx.fillRect(0, 0, w, 2);
+  ctx.fillRect(0, h - 2, w, 2);
 
-  // Soft plank borders
-  ctx.strokeStyle = 'rgba(10, 5, 2, 0.6)';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(0, 0, 512, 512);
+  applyBayerDither(ctx, w, h, 32, false);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
+  const texture = setupPixelTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   return texture;
 }
 
 /**
- * Procedural Papel Picado (perforated tissue paper banner) with vibrant jewel tones
- * (inspired by reference image 1: royal purple, cyan, Aztec gold, marigold orange, ceremonial magenta)
+ * 64x64 Dithered Papel Picado Cutout Banner Texture
  */
 export function createPapelPicadoTexture(colorHex: string, patternType: number): THREE.CanvasTexture {
+  const w = 64, h = 80;
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 340;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // Background banner color
   ctx.fillStyle = colorHex;
-  ctx.fillRect(0, 0, 256, 340);
+  ctx.fillRect(0, 0, w, h);
 
-  // Cutout perforations (set to transparent)
+  // Cutout punch holes
   ctx.globalCompositeOperation = 'destination-out';
 
-  // Scalloped / serrated bottom fringing edge
-  ctx.beginPath();
-  for (let x = 0; x <= 256; x += 32) {
-    ctx.arc(x + 16, 340, 16, Math.PI, 0, false);
-  }
-  ctx.fill();
-
-  // Bottom fringe teeth
-  for (let x = 8; x <= 248; x += 16) {
+  // Bottom serrations
+  for (let x = 0; x < w; x += 8) {
     ctx.beginPath();
-    ctx.moveTo(x, 320);
-    ctx.lineTo(x + 8, 335);
-    ctx.lineTo(x + 16, 320);
+    ctx.moveTo(x, h);
+    ctx.lineTo(x + 4, h - 8);
+    ctx.lineTo(x + 8, h);
     ctx.fill();
   }
 
-  const cx = 128, cy = 160;
-
+  const cx = 32, cy = 36;
   if (patternType === 0) {
-    // Calavera Catrina skull cutout with floral eyes
-    ctx.beginPath();
-    ctx.arc(cx, cy - 25, 34, 0, Math.PI * 2);
-    ctx.rect(cx - 24, cy - 10, 48, 38);
-    ctx.fill();
+    // Pixel Calavera Skull punchout
+    ctx.fillRect(cx - 10, cy - 12, 20, 16);
+    ctx.fillRect(cx - 6, cy + 4, 12, 8);
 
-    // Preserve inner eye flowers & nose
+    // Eye sockets preserved
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = colorHex;
-    // Eye sockets
-    ctx.beginPath();
-    ctx.arc(cx - 12, cy - 24, 7, 0, Math.PI * 2);
-    ctx.arc(cx + 12, cy - 24, 7, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(cx - 7, cy - 8, 5, 5);
+    ctx.fillRect(cx + 2, cy - 8, 5, 5);
 
     ctx.globalCompositeOperation = 'destination-out';
-    // Pupil punch
-    ctx.beginPath();
-    ctx.arc(cx - 12, cy - 24, 3, 0, Math.PI * 2);
-    ctx.arc(cx + 12, cy - 24, 3, 0, Math.PI * 2);
-    // Inverted heart nose
-    ctx.arc(cx, cy - 5, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Teeth slits
-    for (let tx = cx - 16; tx <= cx + 16; tx += 8) {
-      ctx.fillRect(tx, cy + 14, 4, 12);
-    }
+    ctx.fillRect(cx - 5, cy - 6, 2, 2);
+    ctx.fillRect(cx + 3, cy - 6, 2, 2);
+    ctx.fillRect(cx - 2, cy - 1, 4, 3);
   } else if (patternType === 1) {
-    // Sacred Cempasúchil Blossom motif
+    // Sacred Cempasúchil bloom punchout
     ctx.beginPath();
-    ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
     ctx.fill();
 
-    for (let i = 0; i < 12; i++) {
-      const a = (i * Math.PI * 2) / 12;
-      const r = 48;
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 10, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    for (let i = 0; i < 12; i++) {
-      const a = (i * Math.PI * 2) / 12 + Math.PI / 12;
-      const r = 70;
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 6, 0, Math.PI * 2);
-      ctx.fill();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI * 2) / 8;
+      ctx.fillRect(cx + Math.cos(a) * 14 - 2, cy + Math.sin(a) * 14 - 2, 5, 5);
     }
   } else if (patternType === 2) {
-    // Radiant Sunburst & Sacred Cross
-    for (let r = 24; r <= 84; r += 20) {
-      const petals = r === 24 ? 8 : r === 44 ? 12 : 16;
-      for (let j = 0; j < petals; j++) {
-        const a = (j * Math.PI * 2) / petals;
-        ctx.beginPath();
-        ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    // Stepped Sunburst Diamond
+    for (let r = 4; r <= 16; r += 4) {
+      ctx.strokeRect(cx - r, cy - r, r * 2, r * 2);
     }
   } else {
-    // Diamond lattice lace pattern
-    for (let dy = 70; dy <= 260; dy += 28) {
-      for (let dx = 40; dx <= 216; dx += 28) {
-        ctx.beginPath();
-        ctx.moveTo(dx, dy - 8);
-        ctx.lineTo(dx + 8, dy);
-        ctx.lineTo(dx, dy + 8);
-        ctx.lineTo(dx - 8, dy);
-        ctx.fill();
+    // Checker lace slits
+    for (let y = 14; y < h - 16; y += 8) {
+      for (let x = 10; x < w - 10; x += 8) {
+        ctx.fillRect(x, y, 3, 3);
       }
     }
   }
 
-  // Border perforations along top and sides
-  for (let x = 24; x < 240; x += 20) {
-    ctx.beginPath();
-    ctx.arc(x, 24, 4, 0, Math.PI * 2);
-    ctx.fill();
+  // Border perforations
+  for (let x = 6; x < w - 6; x += 6) {
+    ctx.fillRect(x, 4, 2, 2);
   }
-  for (let y = 36; y < 310; y += 20) {
-    ctx.beginPath();
-    ctx.arc(20, y, 4, 0, Math.PI * 2);
-    ctx.arc(236, y, 4, 0, Math.PI * 2);
-    ctx.fill();
+  for (let y = 10; y < h - 10; y += 6) {
+    ctx.fillRect(4, y, 2, 2);
+    ctx.fillRect(w - 6, y, 2, 2);
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+  ctx.globalCompositeOperation = 'source-over';
+  applyBayerDither(ctx, w, h, 20, true);
+
+  return setupPixelTexture(canvas);
 }
 
 /**
- * Procedural Portrait canvas for memorial nichos
+ * 128x128 Dithered Linocut Engraving Portrait Texture
  */
 export function createPortraitTexture(name: string, subtitle: string, accentColor: string): THREE.CanvasTexture {
+  const w = 128, h = 160;
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 320;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // Aged sepia parchment background
-  const grad = ctx.createRadialGradient(128, 160, 20, 128, 160, 180);
-  grad.addColorStop(0, '#f4ecd8');
-  grad.addColorStop(0.7, '#d8c29d');
-  grad.addColorStop(1, '#9e8156');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 256, 320);
+  const cx = 64, cy = 68;
 
-  // Ornate oval frame inner ring
-  ctx.strokeStyle = accentColor;
-  ctx.lineWidth = 4;
+  // Aged parchment base
+  ctx.fillStyle = '#f8f1e0';
+  ctx.fillRect(0, 0, w, h);
+
+  // Stepped 2px border
+  ctx.fillStyle = '#2d1b0f';
+  ctx.fillRect(2, 2, w - 4, 3);
+  ctx.fillRect(2, h - 5, w - 4, 3);
+  ctx.fillRect(2, 2, 3, h - 4);
+  ctx.fillRect(w - 5, 2, 3, h - 4);
+
+  // Accent inner border
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(6, 6, w - 12, 1);
+  ctx.fillRect(6, h - 8, w - 12, 1);
+  ctx.fillRect(6, 6, 1, h - 14);
+  ctx.fillRect(w - 7, 6, 1, h - 14);
+
+  // Central Portrait Medallion
+  ctx.fillStyle = '#ecd8b4';
   ctx.beginPath();
-  ctx.ellipse(128, 140, 80, 100, 0, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#2d1b0f';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Silhouette bust
-  ctx.fillStyle = '#3a271d';
+  // Torso / Shoulders Silhouette
+  ctx.fillStyle = '#1e1008';
   ctx.beginPath();
-  ctx.arc(128, 105, 30, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(128, 180, 52, 40, 0, Math.PI, 0, true);
+  ctx.moveTo(cx - 36, cy + 42);
+  ctx.lineTo(cx - 16, cy + 18);
+  ctx.lineTo(cx + 16, cy + 18);
+  ctx.lineTo(cx + 36, cy + 42);
+  ctx.closePath();
   ctx.fill();
 
-  // Flower crown garland in silhouette
-  ctx.fillStyle = '#ff7b00';
-  for (let i = -3; i <= 3; i++) {
-    ctx.beginPath();
-    ctx.arc(128 + i * 11, 80 + Math.abs(i) * 3, 5, 0, Math.PI * 2);
-    ctx.fill();
+  // Head contour
+  ctx.fillStyle = '#1e1008';
+  ctx.beginPath();
+  ctx.arc(cx, cy - 4, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Face flesh
+  ctx.fillStyle = '#ecd8b4';
+  ctx.beginPath();
+  ctx.arc(cx, cy - 3, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eyes & Eyebrows
+  ctx.fillStyle = '#1e1008';
+  ctx.fillRect(cx - 8, cy - 8, 5, 2);
+  ctx.fillRect(cx + 3, cy - 8, 5, 2);
+  ctx.fillRect(cx - 6, cy - 5, 2, 2);
+  ctx.fillRect(cx + 4, cy - 5, 2, 2);
+
+  // Nose & Mouth
+  ctx.fillRect(cx - 1, cy - 2, 2, 4);
+  ctx.fillRect(cx - 4, cy + 4, 8, 2);
+
+  // Character iconography
+  if (name.includes('Elena')) {
+    // Flower hair crown
+    ctx.fillStyle = '#ea580c';
+    for (let f = -3; f <= 3; f++) {
+      ctx.fillRect(cx + f * 5 - 2, cy - 22, 4, 4);
+    }
+  } else if (name.includes('Mateo')) {
+    // Mustache & Sombrero brim
+    ctx.fillStyle = '#1e1008';
+    ctx.fillRect(cx - 9, cy + 2, 18, 3);
+    ctx.fillRect(cx - 26, cy - 20, 52, 4);
+  } else if (name.includes('Héctor') || name.includes('Hector')) {
+    // Fedora hat & music rosette
+    ctx.fillStyle = '#1e1008';
+    ctx.fillRect(cx - 20, cy - 20, 40, 4);
+    ctx.fillRect(cx - 12, cy - 28, 24, 8);
+  } else if (name.includes('Rosa')) {
+    // Mantilla veil
+    ctx.fillStyle = '#a21caf';
+    ctx.fillRect(cx - 20, cy - 16, 40, 4);
+  } else if (name.includes('Sofia')) {
+    // Healer leaves
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(cx - 22, cy + 8, 6, 6);
+    ctx.fillRect(cx + 16, cy + 8, 6, 6);
   }
 
-  // Text plate
-  ctx.fillStyle = '#22150c';
-  ctx.font = 'bold 18px serif';
+  // Name Cartouche Plaque at bottom
+  ctx.fillStyle = '#12141f';
+  ctx.fillRect(10, h - 32, w - 20, 24);
+  ctx.strokeStyle = accentColor;
+  ctx.strokeRect(10, h - 32, w - 20, 24);
+
+  // Pixel Text using Canvas
+  ctx.fillStyle = '#fde68a';
+  ctx.font = 'bold 8px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(name, 128, 270);
+  ctx.fillText(name.toUpperCase(), cx, h - 20);
 
-  ctx.fillStyle = '#6b4d36';
-  ctx.font = 'italic 12px sans-serif';
-  ctx.fillText(subtitle, 128, 292);
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = '6px monospace';
+  ctx.fillText(subtitle.slice(0, 18), cx, h - 11);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+  applyBayerDither(ctx, w, h, 24, false);
+
+  return setupPixelTexture(canvas);
 }
 
 /**
- * Procedural soft radial contact shadow texture
+ * 64x64 Soft Radial Dithered Contact Shadow Texture
  */
 export function createContactShadowTexture(): THREE.CanvasTexture {
+  const w = 64, h = 64;
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 120);
-  gradient.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
-  gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.3)');
-  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
+  grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  return texture;
+  applyBayerDither(ctx, w, h, 30, true);
+
+  return setupPixelTexture(canvas);
 }
 
 /**
- * Procedural Sugar Skull (Calavera) face texture
+ * 64x64 Dithered Sugar Skull Face Texture
  */
 export function createSugarSkullTexture(): THREE.CanvasTexture {
+  const w = 64, h = 64;
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // Smooth sugar porcelain white
-  ctx.fillStyle = '#fbf7ee';
-  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = '#fffbeb';
+  ctx.fillRect(0, 0, w, h);
 
-  // Marigold flower eyes (blue / magenta petals)
-  const drawFlowerEye = (cx: number, cy: number, color: string) => {
-    ctx.fillStyle = color;
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4;
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(a) * 16, cy + Math.sin(a) * 16, 7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Eye socket
-    ctx.fillStyle = '#111111';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 11, 0, Math.PI * 2);
-    ctx.fill();
-    // Inner jewel sparkle
-    ctx.fillStyle = '#00f2fe';
-    ctx.beginPath();
-    ctx.arc(cx - 3, cy - 3, 3, 0, Math.PI * 2);
-    ctx.fill();
-  };
+  // Cyan & Magenta floral eye sockets
+  ctx.fillStyle = '#ec4899';
+  ctx.fillRect(16, 22, 12, 12);
+  ctx.fillStyle = '#06b6d4';
+  ctx.fillRect(36, 22, 12, 12);
 
-  drawFlowerEye(80, 110, '#e81cff');
-  drawFlowerEye(176, 110, '#00d2ff');
+  // Hollow eye center
+  ctx.fillStyle = '#07080d';
+  ctx.fillRect(20, 26, 4, 4);
+  ctx.fillRect(40, 26, 4, 4);
 
-  // Heart-shaped nose cavity
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath();
-  ctx.moveTo(128, 140);
-  ctx.bezierCurveTo(128, 134, 122, 130, 118, 130);
-  ctx.bezierCurveTo(112, 130, 112, 138, 112, 138);
-  ctx.bezierCurveTo(112, 146, 128, 154, 128, 158);
-  ctx.bezierCurveTo(128, 154, 144, 146, 144, 138);
-  ctx.bezierCurveTo(144, 138, 144, 130, 138, 130);
-  ctx.bezierCurveTo(134, 130, 128, 134, 128, 140);
-  ctx.fill();
+  // Inverted heart nose
+  ctx.fillStyle = '#07080d';
+  ctx.fillRect(30, 38, 4, 5);
 
-  // Forehead ornate marigold cross
-  ctx.strokeStyle = '#ff9900';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(128, 50, 18, 0, Math.PI * 2);
-  ctx.stroke();
+  // Forehead marigold jewel
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(28, 8, 8, 8);
+  ctx.fillStyle = '#fffbeb';
+  ctx.fillRect(31, 11, 2, 2);
 
   // Stitched tooth grin
-  ctx.strokeStyle = '#222222';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(85, 200);
-  ctx.quadraticCurveTo(128, 215, 171, 200);
-  ctx.stroke();
-
-  for (let x = 95; x <= 161; x += 11) {
-    ctx.beginPath();
-    ctx.moveTo(x, 192);
-    ctx.lineTo(x, 215);
-    ctx.stroke();
+  ctx.fillStyle = '#07080d';
+  ctx.fillRect(20, 50, 24, 2);
+  for (let x = 22; x <= 42; x += 4) {
+    ctx.fillRect(x, 47, 2, 8);
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+  applyBayerDither(ctx, w, h, 20, false);
+
+  return setupPixelTexture(canvas);
 }
 
 /**
- * Procedural soft luminous flame glow sprite for candle colonnade
- * (Eliminates costly point lights while giving hundreds of radiant candles)
+ * 64x64 Additive Pixel Candle Glow Billboard Sprite Texture
  */
 export function createFlameGlowSpriteTexture(): THREE.CanvasTexture {
+  const w = 64, h = 64;
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 60);
-  grad.addColorStop(0, 'rgba(255, 245, 200, 1.0)');
-  grad.addColorStop(0.25, 'rgba(255, 160, 40, 0.7)');
-  grad.addColorStop(0.55, 'rgba(255, 90, 10, 0.25)');
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 30);
+  grad.addColorStop(0, 'rgba(255, 251, 235, 1.0)');
+  grad.addColorStop(0.25, 'rgba(245, 158, 11, 0.7)');
+  grad.addColorStop(0.6, 'rgba(217, 119, 6, 0.25)');
   grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
 
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillRect(0, 0, w, h);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  return texture;
+  applyBayerDither(ctx, w, h, 28, true);
+
+  return setupPixelTexture(canvas);
 }
 
 /**
- * Procedural botanical marigold petal texture (inspired by reference image 2)
+ * 32x64 Dithered Marigold Petal Texture
  */
 export function createMarigoldPetalTexture(): THREE.CanvasTexture {
+  const w = 32, h = 64;
   const canvas = document.createElement('canvas');
-  canvas.width = 64;
-  canvas.height = 128;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // Organic petal gradient: deep saffron amber at base to bright golden marigold at tip
-  const grad = ctx.createLinearGradient(32, 128, 32, 0);
-  grad.addColorStop(0, '#c2410c');
-  grad.addColorStop(0.4, '#ea580c');
-  grad.addColorStop(0.85, '#f59e0b');
-  grad.addColorStop(1.0, '#fbbf24');
+  ctx.fillStyle = '#000000';
+  ctx.clearRect(0, 0, w, h);
 
-  ctx.fillStyle = grad;
+  // Petal shape
+  ctx.fillStyle = '#f59e0b';
   ctx.beginPath();
-  ctx.moveTo(32, 120);
-  // Curved base to serrated petal tip
-  ctx.bezierCurveTo(10, 80, 8, 30, 20, 10);
-  // Serrations
-  ctx.lineTo(26, 4);
-  ctx.lineTo(32, 12);
-  ctx.lineTo(38, 4);
-  ctx.lineTo(44, 10);
-  ctx.bezierCurveTo(56, 30, 54, 80, 32, 120);
+  ctx.moveTo(16, 60);
+  ctx.lineTo(4, 24);
+  ctx.lineTo(10, 6);
+  ctx.lineTo(16, 12);
+  ctx.lineTo(22, 6);
+  ctx.lineTo(28, 24);
+  ctx.closePath();
   ctx.fill();
 
-  // Subtle central vein
-  ctx.strokeStyle = 'rgba(154, 52, 18, 0.35)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(32, 110);
-  ctx.lineTo(32, 20);
-  ctx.stroke();
+  // Base gradient & central vein
+  ctx.fillStyle = '#78350f';
+  ctx.fillRect(15, 30, 2, 28);
+
+  applyBayerDither(ctx, w, h, 24, true);
+
+  return setupPixelTexture(canvas);
+}
+
+/**
+ * 128x128 Tileable Seamless Noise & Normal Map Texture Generator
+ * Encodes horizontal tangent deflection in R, vertical convective flow in G,
+ * and multi-scale thermal density mask in B.
+ */
+export function createNoiseNormalMap(width = 128, height = 128): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d')!;
+  const imgData = ctx.createImageData(width, height);
+  const data = imgData.data;
+
+  const twoPi = Math.PI * 2;
+
+  for (let y = 0; y < height; y++) {
+    const v = (y / height) * twoPi;
+    for (let x = 0; x < width; x++) {
+      const u = (x / width) * twoPi;
+
+      // Seamless periodic trigonometric harmonics
+      const n1 = Math.sin(u) + Math.cos(v);
+      const n2 = Math.sin(2 * u + 1.2) * 0.5 + Math.cos(2 * v + 0.8) * 0.5;
+      const n3 = Math.sin(4 * u - v) * 0.25 + Math.cos(3 * u + 4 * v) * 0.25;
+      const n4 = Math.sin(6 * u + 2 * v) * 0.12 + Math.cos(2 * u - 6 * v) * 0.12;
+
+      const density = (n1 + n2 + n3 + n4) / 1.87;
+
+      // Derivatives for normal/gradient deflection
+      const dx = Math.cos(u) + Math.cos(2 * u + 1.2) + 4 * Math.cos(4 * u - v) * 0.25 + 6 * Math.cos(6 * u + 2 * v) * 0.12;
+      const dy = -Math.sin(v) - Math.sin(2 * v + 0.8) - 4 * Math.sin(3 * u + 4 * v) * 0.25 - 6 * Math.sin(2 * u - 6 * v) * 0.12;
+
+      const idx = (y * width + x) * 4;
+      data[idx + 0] = Math.min(255, Math.max(0, Math.floor(128 + dx * 45))); // R: Tangent dx
+      data[idx + 1] = Math.min(255, Math.max(0, Math.floor(128 + dy * 45))); // G: Convection dy
+      data[idx + 2] = Math.min(255, Math.max(0, Math.floor(128 + density * 65))); // B: Turbulence
+      data[idx + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
 
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
   return texture;
 }
 
 /**
- * Asynchronously build all required ofrenda textures, yielding control to main thread
- * between generation steps to prevent UI freeze and frame drops.
+ * 256x1 Solar Golden Thermal Gradient Lookup Ramp
+ * Ramp: Obsidian Void -> Wine Amber -> Saffron Orange -> Luminous Gold -> Candle Amber -> White-Hot Core
+ */
+export function createThermalGradientRamp(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 1;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createLinearGradient(0, 0, 256, 0);
+  grad.addColorStop(0.0, 'rgba(7, 8, 13, 0.0)');
+  grad.addColorStop(0.18, 'rgba(74, 21, 37, 0.35)');
+  grad.addColorStop(0.42, 'rgba(234, 88, 12, 0.7)');
+  grad.addColorStop(0.68, 'rgba(245, 158, 11, 0.9)');
+  grad.addColorStop(0.88, 'rgba(253, 230, 138, 0.98)');
+  grad.addColorStop(1.0, 'rgba(255, 251, 235, 1.0)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 1);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
+}
+
+/**
+ * Asynchronously build all retro 16-color dithered textures
  */
 export async function buildOfrendaTexturesAsync(
   onProgress?: (progressPct: number) => void
@@ -598,8 +701,8 @@ export async function buildOfrendaTexturesAsync(
 
   onProgress?.(70);
   await yieldToMain();
-  // 5 vibrant papel picado variants (inspired by reference image 1)
-  const bannerHues = ['#7e22ce', '#ea580c', '#0891b2', '#ca8a04', '#c026d3'];
+  // 5 vibrant papel picado variants
+  const bannerHues = ['#701a75', '#d97706', '#06b6d4', '#ec4899', '#10b981'];
   const papelPicado: THREE.CanvasTexture[] = [];
   for (let i = 0; i < bannerHues.length; i++) {
     const tex = createPapelPicadoTexture(bannerHues[i], i % 4);
@@ -612,11 +715,11 @@ export async function buildOfrendaTexturesAsync(
   // 5 nicho portrait textures
   const portraits = new Map<string, THREE.CanvasTexture>();
   const portraitDefs = [
-    { id: 'nicho_elena', name: 'Elena Reyes', sub: '1924 – 2012 • Matriarch', col: '#d4af37' },
-    { id: 'nicho_mateo', name: 'Mateo Reyes', sub: '1920 – 1998 • Patriarch', col: '#0891b2' },
-    { id: 'nicho_hector', name: 'Tío Héctor', sub: '1948 – 2016 • Musician', col: '#ea580c' },
-    { id: 'nicho_rosa', name: 'Rosa Reyes', sub: '1952 – 2020 • Chronicler', col: '#c026d3' },
-    { id: 'nicho_sofia', name: 'Dr. Sofia Reyes', sub: '1975 – Present • Healer', col: '#16a34a' }
+    { id: 'nicho_elena', name: 'Elena Reyes', sub: '1924–2012 • Matriarch', col: '#d97706' },
+    { id: 'nicho_mateo', name: 'Mateo Reyes', sub: '1920–1998 • Patriarch', col: '#06b6d4' },
+    { id: 'nicho_hector', name: 'Tío Héctor', sub: '1948–2016 • Musician', col: '#f59e0b' },
+    { id: 'nicho_rosa', name: 'Rosa Reyes', sub: '1952–2020 • Chronicler', col: '#ec4899' },
+    { id: 'nicho_sofia', name: 'Dr. Sofia Reyes', sub: '1975–Now • Healer', col: '#10b981' }
   ];
 
   for (const p of portraitDefs) {
@@ -624,6 +727,13 @@ export async function buildOfrendaTexturesAsync(
     portraits.set(p.id, pTex);
     allTextures.push(pTex);
   }
+
+  onProgress?.(95);
+  await yieldToMain();
+  // Thermal Heat Shimmer maps
+  const noiseNormalMap = createNoiseNormalMap(128, 128);
+  const thermalGradientRamp = createThermalGradientRamp();
+  allTextures.push(noiseNormalMap, thermalGradientRamp);
 
   onProgress?.(100);
   await yieldToMain();
@@ -638,6 +748,8 @@ export async function buildOfrendaTexturesAsync(
     marigoldPetal,
     papelPicado,
     portraits,
+    noiseNormalMap,
+    thermalGradientRamp,
     allTextures
   };
 }

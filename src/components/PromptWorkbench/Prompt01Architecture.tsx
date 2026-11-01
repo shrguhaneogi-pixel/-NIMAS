@@ -11,13 +11,13 @@ export const Prompt01Architecture: React.FC = () => {
   const [selectedEndpoint, setSelectedEndpoint] = useState<'query' | 'ingest' | 'health'>('query');
 
   const pipelineSteps = [
-    { step: 1, title: 'User Question', desc: 'Natural language memorial query', icon: '🗣️' },
-    { step: 2, title: 'Local Embedding', desc: 'all-MiniLM-L6-v2 (384-dim, ONNX runtime)', icon: '🔢' },
-    { step: 3, title: 'SQLite-vec', desc: 'Local cosine vector index search', icon: '🗄️' },
-    { step: 4, title: 'Context Window', desc: 'Top-4 paragraph chunks in <archive_context>', icon: '📑' },
-    { step: 5, title: 'Gemma 2B/9B', desc: 'Reasoning Scratchpad + Structured JSON', icon: '🧠' },
-    { step: 6, title: 'Sentiment Filter', desc: 'Bounded tone parameters', icon: '🕯️' },
-    { step: 7, title: '3D WebGL Altar', desc: 'Three.js lighting, petals, camera damping', icon: '🌺' }
+    { step: 1, title: 'User Question', desc: 'Natural language memorial query', icon: 'I' },
+    { step: 2, title: 'Local Embedding', desc: 'all-MiniLM-L6-v2 (384-dim, ONNX runtime)', icon: 'II' },
+    { step: 3, title: 'SQLite-vec', desc: 'Local cosine vector index search', icon: 'III' },
+    { step: 4, title: 'Context Window', desc: 'Top-4 paragraph chunks in <archive_context>', icon: 'IV' },
+    { step: 5, title: 'Gemma 2B/9B', desc: 'Reasoning Scratchpad + Structured JSON', icon: 'V' },
+    { step: 6, title: 'Sentiment Filter', desc: 'Bounded tone parameters', icon: 'VI' },
+    { step: 7, title: '3D WebGL Altar', desc: 'Three.js lighting, petals, camera damping', icon: 'VII' }
   ];
 
   return (

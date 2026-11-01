@@ -1,24 +1,22 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * ÁNIMAS: The Sovereign 3D Ofrenda - Top Navigation Bar
- * Follows the 3-zone Top Bar Contract: Brand Wordmark | 5 Tab Pills | Actions
- * Features horizontal scroll guard for mobile responsiveness.
+ * ÁNIMAS: The Sovereign 3D Ofrenda - 16-Bit Pixel Navigation
+ * Authentic Stepped Borders (.pixel-box), Pixel Typography (Press Start 2P & Silkscreen), Zero Blur.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Sparkles,
-  Volume2,
-  VolumeX,
-  MessageSquare,
-  ShieldCheck,
-  Compass,
-  BookOpen,
-  FileCheck,
-  Download,
-  Cpu
-} from 'lucide-react';
+  CempasuchilRosette,
+  SanctuaryTemple,
+  ArchiveScroll,
+  AuditLens,
+  ExporterStele,
+  BlueprintGrid,
+  TuningForkWave,
+  ShieldLocal,
+  InquestDialogue
+} from '../UI/SacredIcons';
 
 export type AppTabId = 'sanctuary' | 'archive' | 'audit' | 'exporter' | 'blueprint';
 
@@ -37,92 +35,121 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   isAudioPlaying,
   onToggleAudio
 }) => {
+  const [hoveredTab, setHoveredTab] = useState<AppTabId | null>(null);
+
   const tabs: { id: AppTabId; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'sanctuary', label: 'The Sovereign Sanctuary', icon: Compass },
-    { id: 'archive', label: 'Archive Explorer', icon: BookOpen },
-    { id: 'audit', label: 'Audit Studio', icon: FileCheck },
-    { id: 'exporter', label: 'Scaffold Exporter', icon: Download },
-    { id: 'blueprint', label: 'Phase 3 Blueprint', icon: Cpu }
+    { id: 'sanctuary', label: 'Sanctuary', icon: SanctuaryTemple },
+    { id: 'archive', label: 'Archive', icon: ArchiveScroll },
+    { id: 'audit', label: 'Audit', icon: AuditLens },
+    { id: 'exporter', label: 'Export', icon: ExporterStele },
+    { id: 'blueprint', label: 'Blueprint', icon: BlueprintGrid }
   ];
 
   return (
-    <header className="fixed top-0 inset-x-0 z-30 h-16 bg-stone-950/90 border-b border-stone-800/80 px-3 sm:px-6 flex items-center justify-between gap-3 md:gap-6 select-none text-stone-200">
+    <header className="fixed top-3 inset-x-0 z-40 px-3 sm:px-6 pointer-events-none flex items-center justify-between">
       
-      {/* Zone 1: Brand Wordmark (Single text element) */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        <a
-          href="#"
-          onClick={e => {
-            e.preventDefault();
-            onSelectTab('sanctuary');
-          }}
-          className="flex items-center gap-2 group cursor-pointer"
+      {/* Left: Pixel Brand Badge */}
+      <div className="pointer-events-auto">
+        <button
+          onClick={() => onSelectTab('sanctuary')}
+          data-cursor="interactive"
+          className="pixel-box-amber h-9 px-3 flex items-center gap-2 cursor-pointer focus-visible:outline-none"
+          aria-label="ÁNIMAS Sovereign Ofrenda Home"
         >
-          <span className="text-xl">🌺</span>
-          <div>
-            <span className="font-serif font-bold text-amber-200 tracking-wider text-base group-hover:text-amber-100 transition whitespace-nowrap block">
-              ÁNIMAS
-            </span>
-            <span className="text-[10px] text-stone-400 font-serif italic block -mt-1 hidden sm:block">
-              The Sovereign 3D Ofrenda
-            </span>
-          </div>
-        </a>
+          <CempasuchilRosette className="w-4 h-4 text-amber-400" />
+          <span className="font-pixel-display text-[10px] text-amber-300 uppercase tracking-widest">
+            ÁNIMAS
+          </span>
+        </button>
       </div>
 
-      {/* Zone 2: 5 Primary Tab Pills (Single-line with overflow-x scroll guard) */}
-      <nav className="flex items-center gap-1 bg-stone-900/90 p-1 rounded-xl border border-stone-800/80 overflow-x-auto no-scrollbar max-w-full">
-        {tabs.map(tab => {
+      {/* Center: Stepped 5-Tab Pixel Navigation Capsule */}
+      <nav
+        aria-label="Primary Navigation"
+        className="pointer-events-auto pixel-box flex items-center gap-1 p-1"
+      >
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
+          const isHovered = hoveredTab === tab.id;
+
           return (
-            <button
-              key={tab.id}
-              onClick={() => onSelectTab(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 ${
-                isActive
-                  ? 'bg-amber-600 text-stone-950 font-bold shadow'
-                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
-            </button>
+            <div key={tab.id} className="relative">
+              <button
+                onClick={() => onSelectTab(tab.id)}
+                onMouseEnter={() => setHoveredTab(tab.id)}
+                onMouseLeave={() => setHoveredTab(null)}
+                onFocus={() => setHoveredTab(tab.id)}
+                onBlur={() => setHoveredTab(null)}
+                data-cursor="interactive"
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative h-8 px-2.5 flex items-center justify-center cursor-pointer font-pixel-display text-[9px] uppercase tracking-wider transition-none ${
+                  isActive
+                    ? 'bg-amber-500 border-2 border-amber-300 text-[#07080d] shadow-[1px_1px_0px_#000]'
+                    : 'bg-transparent text-stone-300 hover:bg-[#1a1e36] hover:text-amber-300 border-2 border-transparent'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#07080d]' : 'text-stone-300'}`} />
+                {isActive && (
+                  <span className="ml-1.5 hidden md:inline font-bold">
+                    {tab.label}
+                  </span>
+                )}
+              </button>
+
+              {/* Pixel Tooltip */}
+              <div
+                className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 pixel-box pointer-events-none z-50 whitespace-nowrap ${
+                  isHovered && !isActive
+                    ? 'block'
+                    : 'hidden'
+                }`}
+              >
+                <span className="font-pixel-body text-[9px] uppercase tracking-wider text-amber-300">
+                  {tab.label}
+                </span>
+              </div>
+            </div>
           );
         })}
       </nav>
 
-      {/* Zone 3: Actions & Privacy Status */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Right: Stepped Cluster */}
+      <div className="pointer-events-auto flex items-center gap-2">
         {/* Procedural Audio Ambience Toggle */}
         <button
           onClick={onToggleAudio}
-          className={`p-2 rounded-xl text-xs flex items-center gap-1.5 border transition cursor-pointer ${
+          data-cursor="interactive"
+          className={`pixel-btn h-9 w-9 flex items-center justify-center cursor-pointer ${
             isAudioPlaying
-              ? 'bg-amber-950/60 border-amber-700/80 text-amber-300'
-              : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
+              ? 'pixel-btn-amber text-amber-300'
+              : 'text-stone-300'
           }`}
-          title={isAudioPlaying ? 'Mute procedural night ambience' : 'Enable procedural audio soundscape'}
+          aria-label={isAudioPlaying ? 'Mute procedural audio ambience' : 'Enable nocturnal soundscape'}
+          title={isAudioPlaying ? 'Ambience: Active' : 'Ambience: Muted'}
         >
-          {isAudioPlaying ? <Volume2 className="w-3.5 h-3.5 text-amber-400" /> : <VolumeX className="w-3.5 h-3.5" />}
-          <span className="text-[11px] font-mono hidden xl:inline">
-            {isAudioPlaying ? 'Ambience On' : 'Ambience Off'}
-          </span>
+          <TuningForkWave className="w-4 h-4" />
         </button>
 
-        {/* Local-First Sovereign Status Indicator (Clean static label, no pulsing dot) */}
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/70 border border-emerald-800/60 text-[10px] text-emerald-300 font-mono">
-          <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>Local & Private</span>
+        {/* Local Sovereign Privacy Badge */}
+        <div
+          className="pixel-box h-9 px-2.5 text-emerald-400 text-[9px] font-pixel-body tracking-wider items-center gap-1.5 hidden sm:flex"
+          title="Zero-Cloud Architecture: Local inference & vector store"
+        >
+          <ShieldLocal className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="uppercase text-[8px] text-emerald-300 font-pixel-display">Local</span>
         </div>
 
-        {/* Ask the Archive Button */}
+        {/* Ask the Archive Inquest Trigger */}
         <button
           onClick={onOpenInquestDrawer}
-          className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-stone-950 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow transition cursor-pointer shrink-0"
+          data-cursor="interactive"
+          className="pixel-btn pixel-btn-amber h-9 px-3 flex items-center gap-1.5 cursor-pointer font-pixel-display text-[9px] uppercase tracking-wider"
+          aria-label="Open Archive Inquest Companion"
         >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Ask the Archive</span>
+          <InquestDialogue className="w-3.5 h-3.5 text-amber-300" />
+          <span className="hidden lg:inline">Inquest</span>
         </button>
       </div>
 

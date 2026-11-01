@@ -13,6 +13,7 @@ import { AuditStudioTab } from './components/Tabs/AuditStudioTab';
 import { ScaffoldExporterTab } from './components/Tabs/ScaffoldExporterTab';
 import { Phase3BlueprintTab } from './components/Tabs/Phase3BlueprintTab/Phase3BlueprintTab';
 import { InquestDrawer } from './components/InquestDrawer/InquestDrawer';
+import { CustomSanctuaryCursor } from './components/Cursor/CustomSanctuaryCursor';
 import { VisualDirectionState } from './types';
 import { audioAmbience } from './services/audioAmbience';
 
@@ -49,7 +50,10 @@ export default function App() {
   return (
     <div className="relative w-screen h-screen overflow-x-hidden bg-stone-950 font-sans text-stone-100 select-none">
       
-      {/* 3-Zone Top Navigation Bar */}
+      {/* Reactive 3D-Synchronized Dual-Layer Sanctuary Cursor */}
+      <CustomSanctuaryCursor />
+
+      {/* Floating Obsidian Glass Top Navigation Bar */}
       <TopNavbar
         activeTab={activeTab}
         onSelectTab={setActiveTab}

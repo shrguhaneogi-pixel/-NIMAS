@@ -115,7 +115,7 @@ export const Prompt03GroundedAnswerer: React.FC = () => {
               {SYSTEM_PROMPTS.GROUNDED_ANSWERER_V2}
             </div>
             <div className="text-[11px] text-amber-300 font-sans flex items-center gap-1.5">
-              <span>💡</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>
                 <strong>Why v2 succeeds on small local models:</strong> Placing <code>"reasoning_scratchpad"</code> as the first key forces the model's auto-regressive tokens to compute evidence validity before generating the status and answer strings.
               </span>

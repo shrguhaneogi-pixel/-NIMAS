@@ -171,14 +171,14 @@ export const Prompt02ArchiveDataset: React.FC = () => {
                   </div>
 
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-stone-400">
-                    {doc.source_date && <span>📅 {doc.source_date}</span>}
-                    <span className="capitalize">📜 {doc.source_type.replace('_', ' ')}</span>
-                    <span>🧩 {doc.chunks.length} Chunks</span>
+                    {doc.source_date && <span>Date: {doc.source_date}</span>}
+                    <span className="capitalize">Type: {doc.source_type.replace('_', ' ')}</span>
+                    <span>{doc.chunks.length} Chunks</span>
                   </div>
 
                   {doc.source_type === 'adversarial_injection' && (
                     <div className="mt-1.5 text-[9px] font-mono text-rose-400 bg-rose-950/60 border border-rose-800/60 px-1.5 py-0.5 rounded">
-                      ⚠️ Adversarial Injection Test Vector
+                      [SECURITY] Adversarial Injection Test Vector
                     </div>
                   )}
                 </div>

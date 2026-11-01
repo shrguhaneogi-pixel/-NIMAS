@@ -2,12 +2,13 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * ÁNIMAS: The Sovereign 3D Ofrenda - Tab 1: Sovereign Sanctuary View
- * Immersive procedural 3D ofrenda with floating collapsible bottom control dock.
+ * Immersive procedural 3D ofrenda with floating obsidian control dock and left cameo rail.
  */
 
 import React, { useState } from 'react';
 import { OfrendaCanvas } from '../ThreeOfrenda/OfrendaCanvas';
 import { FloatingDock } from '../FloatingDock';
+import { LeftCameoRail } from '../Navigation/LeftCameoRail';
 import { MemoryInspectorModal } from '../MemoryInspectorModal';
 import { VisualDirectionState, OfrendaItemClickData } from '../../types';
 import { audioAmbience } from '../../services/audioAmbience';
@@ -25,10 +26,6 @@ interface SovereignSanctuaryTabProps {
 export const SovereignSanctuaryTab: React.FC<SovereignSanctuaryTabProps> = ({
   visualState,
   onUpdateVisualState,
-  isAudioPlaying,
-  onToggleAudio,
-  onOpenInquestDrawer,
-  onNavigateToTab,
   onAskAboutItem
 }) => {
   const [hoveredItemTitle, setHoveredItemTitle] = useState<string | null>(null);
@@ -53,10 +50,29 @@ export const SovereignSanctuaryTab: React.FC<SovereignSanctuaryTabProps> = ({
     onUpdateVisualState({ camera_profile: 'overview' });
   };
 
+  const handleCameoSelect = (id: string) => {
+    audioAmbience.playMemoryChime();
+    const isNicho = id.startsWith('nicho');
+    const item: OfrendaItemClickData = {
+      id,
+      title: id.replace('nicho_', '').replace('offering_', '').replace('_', ' ').toUpperCase(),
+      type: isNicho ? 'nicho' : 'pan_de_muerto',
+      description: 'Memorial offering inspected from the left sacred cameo rail.',
+      associated_memory_id: id === 'nicho_elena' ? 'mem_001' : 'mem_002',
+      tier: 2
+    };
+    setSelectedOffering(item);
+    if (isNicho) {
+      onUpdateVisualState({ camera_profile: 'inspect_nicho' });
+    } else {
+      onUpdateVisualState({ camera_profile: 'inspect_recipe' });
+    }
+  };
+
   return (
     <div className="relative w-full h-full overflow-hidden select-none bg-stone-950">
       
-      {/* Three.js 3D Ofrenda WebGL Scene */}
+      {/* Three.js 3D Ofrenda WebGL Scene with 3D cursor light coupling */}
       <OfrendaCanvas
         visualState={visualState}
         onItemClick={handleOfferingClick}
@@ -65,17 +81,17 @@ export const SovereignSanctuaryTab: React.FC<SovereignSanctuaryTabProps> = ({
         onResetView={handleResetView}
       />
 
-      {/* Floating Collapsible Bottom Control Dock */}
+      {/* Left-Edge Vertical Cameo Rail (Prevents bottom-edge UI collisions) */}
+      <LeftCameoRail
+        selectedOfferingId={selectedOffering?.id ?? null}
+        onSelectRelic={handleCameoSelect}
+      />
+
+      {/* Floating Minimal Obsidian Control Dock (h-12, rounded-full) */}
       <FloatingDock
         visualState={visualState}
         onUpdateVisualState={onUpdateVisualState}
-        isAudioPlaying={isAudioPlaying}
-        onToggleAudio={onToggleAudio}
-        onOpenCompanion={onOpenInquestDrawer}
-        onOpenWorkbench={() => onNavigateToTab('audit')}
         hoveredItemTitle={hoveredItemTitle}
-        activeViewMode="3d_ofrenda"
-        onSwitchViewMode={mode => onNavigateToTab(mode === 'prompt_workbench' ? 'audit' : 'sanctuary')}
       />
 
       {/* Memory Inspector Modal when clicking offerings */}

@@ -36,3 +36,106 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Scoped Custom Sanctuary Cursor */
+body.has-custom-cursor,
+body.has-custom-cursor * {
+  cursor: none !important;
+}
+
+/* Editorial Serif & Small-Caps Accents */
+.font-ceremonial {
+  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+  letter-spacing: 0.18em;
+}
+
+/* Pixel Typography System */
+.font-pixel-display {
+  font-family: 'Press Start 2P', monospace;
+  letter-spacing: -0.02em;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+
+.font-pixel-body {
+  font-family: 'Silkscreen', monospace;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+
+/* Authentic Stepped Pixel-Box Containers (No backdrop-blur GPU penalties) */
+.pixel-box {
+  background-color: #0a0c16;
+  border: 2px solid #232a42;
+  box-shadow: 2px 2px 0px 0px #030408, -1px -1px 0px 0px #353f63;
+  image-rendering: pixelated;
+}
+
+.pixel-box-amber {
+  background-color: #120e0d;
+  border: 2px solid #92400e;
+  box-shadow: 2px 2px 0px 0px #451a03, -1px -1px 0px 0px #d97706;
+  image-rendering: pixelated;
+}
+
+.pixel-box-purple {
+  background-color: #140b1a;
+  border: 2px solid #701a75;
+  box-shadow: 2px 2px 0px 0px #3b0764, -1px -1px 0px 0px #a21caf;
+  image-rendering: pixelated;
+}
+
+/* Stepped Pixel Buttons */
+.pixel-btn {
+  background-color: #121526;
+  border: 2px solid #353f63;
+  box-shadow: 2px 2px 0px 0px #04050a;
+  color: #e2e8f0;
+  transition: none;
+  image-rendering: pixelated;
+}
+
+.pixel-btn:hover {
+  background-color: #1a1e36;
+  border-color: #f59e0b;
+  color: #fef08a;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px 0px #04050a;
+}
+
+.pixel-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px #04050a;
+}
+
+.pixel-btn-amber {
+  background-color: #78350f;
+  border: 2px solid #d97706;
+  box-shadow: 2px 2px 0px 0px #451a03;
+  color: #fef3c7;
+}
+
+.pixel-btn-amber:hover {
+  background-color: #92400e;
+  border-color: #f59e0b;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px 0px #451a03;
+}
+
+.pixel-btn-amber:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px #451a03;
+}
+
+/* Pixel Art Image Rendering for WebGL and 2D Canvases */
+.pixel-canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+

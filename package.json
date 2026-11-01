@@ -1,13 +1,16 @@
 {
-  "name": "react-example",
+  "name": "animas-sovereign-ofrenda",
+  "description": "A local-first, privacy-preserving interactive 3D memorial ofrenda inspired by Día de los Muertos and the Ghost in the Machine.",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "test": "node --experimental-strip-types tests/run-all.js",
+    "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist', {recursive:true,force:true});\"",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -36,6 +39,6 @@
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
-    "typescript": "^7.0.2"
+    "typescript": "^5.7.2"
   }
 }

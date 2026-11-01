@@ -19,6 +19,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { buildOfrendaScene } from './sceneBuilder';
 import { buildOfrendaTexturesAsync, ProceduralTextureSet } from './proceduralTextures';
 import { InteractiveRelic } from './InteractiveRelic';
+import { DitherCursorPostProcess } from './DitherCursorEffect';
 import { VisualDirectionState, OfrendaItemClickData } from '../../types';
 import { Loader2, Minimize2 } from 'lucide-react';
 
@@ -163,102 +164,9 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
   const { scene, gl } = useThree();
   const altarHitboxRef = useRef<THREE.Mesh>(null);
   const cursorLightRef = useRef<THREE.PointLight>(null);
-  const heatMeshRef = useRef<THREE.Mesh>(null);
-  const isPressedRef = useRef(false);
-  const pressIntensityRef = useRef(0.0);
-
   // Angled Altar Proxy Plane matching the stepped slope of the 3-tier altar
   const altarProxyPlane = useMemo(() => {
     return new THREE.Plane(new THREE.Vector3(0, 0.35, 0.94).normalize(), -0.6);
-  }, []);
-
-  // Custom GLSL Heat-Distortion Shader Material
-  const heatShimmerMaterial = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uPressIntensity: { value: 0 },
-        uNoiseNormalMap: { value: textures.noiseNormalMap },
-        uGradientRamp: { value: textures.thermalGradientRamp }
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float uTime;
-        uniform float uPressIntensity;
-        uniform sampler2D uNoiseNormalMap;
-        uniform sampler2D uGradientRamp;
-        varying vec2 vUv;
-
-        void main() {
-          vec2 centeredUv = vUv - 0.5;
-          float dist = length(centeredUv);
-          float radialMask = smoothstep(0.5, 0.05, dist);
-
-          // Scroll noise UV coordinates upward over time to mimic rising hot air
-          vec2 scrollUv1 = vUv * 2.0 + vec2(sin(uTime * 1.7) * 0.12, -uTime * 1.4);
-          vec2 scrollUv2 = vUv * 3.5 + vec2(-cos(uTime * 2.1) * 0.08, -uTime * 2.2);
-
-          vec2 normalOffset = (texture2D(uNoiseNormalMap, scrollUv1).rg - 0.5) * 2.0
-                            + (texture2D(uNoiseNormalMap, scrollUv2).rg - 0.5);
-
-          // Warp the UV coordinates based on press state and radial falloff
-          float warpStrength = mix(0.03, 0.16, uPressIntensity) * radialMask;
-          vec2 warpedUv = vUv + normalOffset * warpStrength;
-
-          // Sample thermal gradient using the warped UVs for shimmering air rings
-          float warpedDist = length(warpedUv - 0.5);
-          float shimmerWave = sin(warpedDist * 28.0 - uTime * 10.0) * 0.5 + 0.5;
-          vec3 glowColor = texture2D(uGradientRamp, vec2(clamp(1.0 - warpedDist * 2.0, 0.0, 1.0), 0.5)).rgb;
-
-          // Combine core candle glow with shimmering heat-wave refraction rings
-          float alpha = radialMask * mix(0.35, 0.85, uPressIntensity) * (0.75 + 0.25 * shimmerWave);
-          gl_FragColor = vec4(glowColor + shimmerWave * 0.18 * uPressIntensity, alpha);
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    });
-  }, [textures.noiseNormalMap, textures.thermalGradientRamp]);
-
-  useEffect(() => {
-    return () => {
-      heatShimmerMaterial.dispose();
-    };
-  }, [heatShimmerMaterial]);
-
-  // Press & Orbit Drag state listeners for thermal heat-haze coupling
-  useEffect(() => {
-    const handlePointerDown = () => {
-      isPressedRef.current = true;
-    };
-    const handlePointerUp = () => {
-      isPressedRef.current = false;
-    };
-    const handleCustomPress = (e: Event) => {
-      const detail = (e as CustomEvent<{ isPressed: boolean }>).detail;
-      if (detail && detail.isPressed !== undefined) {
-        isPressedRef.current = detail.isPressed;
-      }
-    };
-
-    window.addEventListener('pointerdown', handlePointerDown);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
-    window.addEventListener('animas:cursor-press', handleCustomPress);
-
-    return () => {
-      window.removeEventListener('pointerdown', handlePointerDown);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-      window.removeEventListener('animas:cursor-press', handleCustomPress);
-    };
   }, []);
 
   // Build Procedural Scene Graph
@@ -357,15 +265,10 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
     }
   };
 
-  // Render loop animations for 3D cursor light, thermal heat haze, candles, smoke, and petals
+  // Render loop animations for 3D cursor light, candles, smoke, and petals
   useFrame((state, delta) => {
     const clockDelta = Math.min(delta, 0.1);
     const elapsed = performance.now() * 0.001;
-
-    // Smooth press intensity damping
-    const targetPress = isPressedRef.current ? 1.0 : 0.0;
-    pressIntensityRef.current = THREE.MathUtils.damp(pressIntensityRef.current, targetPress, 8.0, clockDelta);
-    const pressIntensity = pressIntensityRef.current;
 
     // 1. Reactive 3D Cursor Light Projection on Angled Altar Plane
     if (cursorLightRef.current) {
@@ -383,30 +286,14 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
         );
       }
 
-      // PointLight Coupling: Idle warm amber (0.8, 4.0m) -> Pressed radiant white-gold (2.2, 7.5m) with micro-shimmer
-      const idleColor = new THREE.Color(0xff9d3b);
-      const pressedColor = new THREE.Color(0xfde68a);
-      cursorLightRef.current.color.lerpColors(idleColor, pressedColor, pressIntensity);
-
-      const highFreqShimmer = Math.sin(elapsed * 24.0) * 0.15 * pressIntensity;
-      cursorLightRef.current.intensity = THREE.MathUtils.lerp(0.8, 2.2, pressIntensity) + highFreqShimmer;
-      cursorLightRef.current.distance = THREE.MathUtils.lerp(4.0, 7.5, pressIntensity);
+      // Warm candle light tracking altar plane with subtle natural flame shimmer
+      cursorLightRef.current.color.setHex(0xff9d3b);
+      const candleShimmer = Math.sin(elapsed * 3.6) * 0.05 + Math.cos(elapsed * 6.8) * 0.03;
+      cursorLightRef.current.intensity = 1.0 + candleShimmer;
+      cursorLightRef.current.distance = 4.5;
     }
 
-    // 2. Camera-Facing Thermal Heat-Haze Billboard Quad Synchronization
-    if (heatMeshRef.current && cursorLightRef.current) {
-      heatMeshRef.current.position.copy(cursorLightRef.current.position);
-      heatMeshRef.current.position.z += 0.05; // slight camera-side offset
-      heatMeshRef.current.quaternion.copy(state.camera.quaternion);
-
-      const heatScale = THREE.MathUtils.lerp(0.85, 1.85, pressIntensity);
-      heatMeshRef.current.scale.set(heatScale, heatScale, 1.0);
-
-      heatShimmerMaterial.uniforms.uTime.value = elapsed;
-      heatShimmerMaterial.uniforms.uPressIntensity.value = pressIntensity;
-    }
-
-    // 3. Candle Flame Flickering
+    // 2. Candle Flame Flickering
     const flameWarmthMult =
       visualState.lighting_profile === 'warm_candle'
         ? 1.35
@@ -456,7 +343,7 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
     }
     smoke.points.geometry.attributes.position.needsUpdate = true;
 
-    // 5. Swirling Cempasúchil Petals with Gentle Thermal Updraft Coupling
+    // 5. Swirling Cempasúchil Petals
     const petals = graph.petals;
     const pSpeedMult =
       visualState.particle_profile === 'petal_drift'
@@ -467,28 +354,10 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
         ? 0.0
         : 0.5;
 
-    const cursor3DPos = cursorLightRef.current?.position;
-
     for (let i = 0; i < petals.count; i++) {
       petals.positions[i * 3 + 0] += petals.velocities[i * 3 + 0] * clockDelta * pSpeedMult;
       petals.positions[i * 3 + 1] += petals.velocities[i * 3 + 1] * clockDelta * pSpeedMult;
       petals.positions[i * 3 + 2] += petals.velocities[i * 3 + 2] * clockDelta * pSpeedMult;
-
-      // Gentle thermal updraft from cursor thermal field
-      if (pressIntensity > 0.06 && cursor3DPos) {
-        const dx = petals.positions[i * 3 + 0] - cursor3DPos.x;
-        const dy = petals.positions[i * 3 + 1] - cursor3DPos.y;
-        const dz = petals.positions[i * 3 + 2] - cursor3DPos.z;
-        const distSq = dx * dx + dy * dy + dz * dz;
-
-        if (distSq < 4.84) { // radius 2.2
-          const dist = Math.sqrt(distSq);
-          const buoyancyFactor = (1.0 - dist / 2.2) * pressIntensity;
-          petals.positions[i * 3 + 1] += clockDelta * 0.8 * buoyancyFactor;
-          petals.positions[i * 3 + 0] += dx * clockDelta * 0.3 * buoyancyFactor;
-          petals.positions[i * 3 + 2] += dz * clockDelta * 0.3 * buoyancyFactor;
-        }
-      }
 
       petals.rotations[i * 3 + 0] += clockDelta * 1.5;
       petals.rotations[i * 3 + 1] += clockDelta * 1.2;
@@ -519,11 +388,6 @@ const SanctuaryScene: React.FC<SanctuarySceneProps> = ({
         decay={2.0}
         position={[0, 1.45, 1.0]}
       />
-
-      {/* Camera-Facing GLSL Thermal Heat-Haze Distortion Billboard Quad */}
-      <mesh ref={heatMeshRef} material={heatShimmerMaterial}>
-        <planeGeometry args={[1.6, 1.6]} />
-      </mesh>
 
       {/* Targeted Occlusion Hitbox Mesh (Lightweight 12-polygon box preventing scene-wide raycast loops) */}
       <mesh ref={altarHitboxRef} visible={false} position={[0, 1.45, 0.1]}>
@@ -754,6 +618,9 @@ export const OfrendaCanvas: React.FC<OfrendaCanvasProps> = ({
             onHoverItemChange={onHoverItemChange}
             setIsDefaultView={setIsDefaultView}
           />
+
+          {/* WebGL-Native 4x4 Bayer Dither Cursor & FBO Trail Post-Processing Pass */}
+          <DitherCursorPostProcess />
         </Canvas>
       )}
 

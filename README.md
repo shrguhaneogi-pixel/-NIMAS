@@ -50,13 +50,125 @@ In an era of cloud-hosted AI and commercial mourning tech, Ánimas takes a stric
 └─────────────┴─────────────┴─────────────┴──────────────┴───────────────┘
 ```
 
-1. **Sovereign Sanctuary (`Tab 1`)**: Monumental 3D altar view with spatial markers, relic hover inspection, thermal cursor, and ambient synthesized soundscape.
+1. **Sovereign Sanctuary (`Tab 1`)**: Monumental 3D altar view with spatial markers, relic hover inspection, top-down candle cursor with concentric rings dither glow, and ambient synthesized soundscape.
 2. **Archive Explorer (`Tab 2`)**: Archival document browser, chunk viewer, and memory ingestion interface with live sentiment preview.
 3. **Audit Studio (`Tab 3`)**: Non-blocking asynchronous evaluation runner testing 30 curated Día de los Muertos benchmarks.
 4. **Scaffold Exporter (`Tab 4`)**: Verified code generators for Python FastAPI + `sqlite-vec` + Gemma 2B/9B local backends.
 5. **Phase 3 Blueprint (`Tab 5`)**: Complete technical specification, threat register, and verification checklist.
 
 For in-depth architectural details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## Knowledge Graph & Architectural Tree
+
+Ánimas is mapped into a persistent knowledge graph via [`graphify`](https://github.com/graphifyy/graphify) (**378 nodes · 878 edges across 17 communities**).
+
+### Clustered Knowledge Graph
+
+```mermaid
+flowchart TD
+    subgraph UI_Shell["Application Shell & Navigation (Community 2 & 9)"]
+        APP["App.tsx [Root State]"]
+        NAV["TopNavbar() [Audio & Tabs]"]
+        RAIL["RelicRail() [16x16 Pixel SVGs]"]
+        CUR["CustomSanctuaryCursor() [Top-Down Candle]"]
+    end
+
+    subgraph Sanctuary_3D["3D Sanctuary & Shaders (Community 3 & 5)"]
+        CANVAS["OfrendaCanvas() [R3F Viewport]"]
+        SCENE["sceneBuilder.ts [Stepped Altar]"]
+        TEXTURES["proceduralTextures.ts [16-Bit Bayer]"]
+        DITHER["DitherCursorPostProcess() [Ping-Pong FBO]"]
+        RELIC["InteractiveRelic() [Raycast Relics]"]
+    end
+
+    subgraph RAG_Companion["Memory Intelligence & Grounding (Community 0 & 10)"]
+        RAG["LocalRAGEngine [BM25 Unicode Tokenizer]"]
+        GEMMA["GemmaSimulator [Constitutional Answering]"]
+        ARCHIVE["SYNTHETIC_ARCHIVE [12 Family Records]"]
+        BENCH["AuditStudio [30 Gold Benchmarks]"]
+        DRAWER["InquestDrawer() [CoT Scratchpad]"]
+    end
+
+    subgraph Audio_System["Web Audio Ambience (Community 14)"]
+        AUDIO["AudioAmbienceEngine [Synthesized Wind & Chimes]"]
+    end
+
+    subgraph Blueprint_Scaffold["Scaffolding & Architecture (Community 1)"]
+        BLUEPRINT["Phase3BlueprintTab() [Specifications]"]
+        SCAFFOLD["ScaffoldExporterTab() [FastAPI & sqlite-vec]"]
+    end
+
+    APP --> NAV
+    APP --> RAIL
+    APP --> CUR
+    APP --> CANVAS
+    APP --> AUDIO
+
+    CANVAS --> SCENE
+    CANVAS --> TEXTURES
+    CANVAS --> DITHER
+    CANVAS --> RELIC
+
+    RAIL -.->|Relic Select| RELIC
+    RELIC --> DRAWER
+
+    DRAWER --> RAG
+    DRAWER --> GEMMA
+    RAG --> ARCHIVE
+    BENCH --> RAG
+    BENCH --> GEMMA
+
+    APP --> BLUEPRINT
+    APP --> SCAFFOLD
+```
+
+### Knowledge Graph Tree & Community Hubs
+
+```
+Ánimas Sovereign Knowledge Graph (378 nodes · 878 edges · 17 communities)
+├── [0] RAG & Grounded Companion (44 nodes · Cohesion 0.07)
+│   ├── LocalRAGEngine [BM25 Unicode Lookarounds]
+│   ├── gemmaSimulator [Constitutional Answering & Persona Defense]
+│   ├── SYNTHETIC_ARCHIVE [12 Mexican Family Memory Records]
+│   └── InquestDrawer / MemoryInspectorModal
+├── [1] Architectural Blueprint System (32 nodes · Cohesion 0.11)
+│   ├── Phase3BlueprintTab [Specifications & Roadmaps]
+│   ├── AgentDelegationSection [Role Architectures]
+│   └── BlueprintStateContext / VerificationContext
+├── [2] Application Shell & Cursor (29 nodes · Cohesion 0.11)
+│   ├── App.tsx [Root State Container & Tab Orchestrator]
+│   ├── CustomSanctuaryCursor [Top-Down Candle DOM Sprite]
+│   └── TopNavbar [Audio Controls & Sanctuary Badges]
+├── [3] 3D Sanctuary & Dither Shaders (23 nodes · Cohesion 0.10)
+│   ├── OfrendaCanvas [React Three Fiber WebGL Canvas]
+│   ├── DitherCursorPipeline [Ping-Pong FBO Trail Engine]
+│   ├── DitherTrailShader [Decaying Concentric Candle Rings]
+│   └── DitherCursorShader [4x4 Bayer Matrix Dither Composite]
+├── [5] Procedural 16-Bit Textures (18 nodes · Cohesion 0.28)
+│   ├── buildOfrendaTexturesAsync [Procedural Canvas Textures]
+│   ├── applyBayerDither [4x4 Ordered Bayer Quantization]
+│   └── createCorbelledStone / createChevronFloor / createMarigoldPetal
+├── [9] Visual Relic Rail & Icons (14 nodes · Cohesion 0.32)
+│   ├── RelicRail [Left Vertical Sanctuary Rail]
+│   ├── ElenaCameoIcon / MateoCameoIcon / HectorCameoIcon / RosaCameoIcon / SofiaCameoIcon
+│   └── SugarSkullIcon / PanDeMuertoIcon / CopalChaliceIcon / ParachoGuitarIcon
+├── [10] Constitutional Prompt Workbench (10 nodes · Cohesion 0.25)
+│   ├── Prompt00Constitution / Prompt01Architecture / Prompt02ArchiveDataset
+│   └── Prompt03GroundedAnswerer / Prompt04SentimentEngine / Prompt05EvaluationAudit
+├── [11] Automated Test Suite Runner (6 nodes · Cohesion 0.17)
+│   ├── tests/run-all.js [Zero-Dependency Master Runner]
+│   └── rag.test.js / grounding.test.js / sentiment.test.js / audio.test.js / visualOverhaul.test.js
+├── [14] Web Audio Ambience Engine (8 nodes · Cohesion 0.38)
+│   └── AudioAmbienceEngine [Procedural Wind, Candle Crackle & Memory Chimes]
+└── [4, 6, 7, 8, 12, 13, 15, 16] Tooling & Infrastructure (160 nodes)
+    ├── .github/workflows/ci.yml [Multi-Platform CI Matrix]
+    ├── tsconfig.json [Strict TypeScript Configuration]
+    └── vite.config.ts / package.json [Tailwind CSS v4 & Build Pipeline]
+```
+
+> **Interactive Visualization**: Open [`graphify-out/index.html`](graphify-out/index.html) in your browser for the full interactive force-directed graph exploration. Detailed cluster analysis is available in [`graphify-out/GRAPH_REPORT.md`](graphify-out/GRAPH_REPORT.md).
 
 ---
 

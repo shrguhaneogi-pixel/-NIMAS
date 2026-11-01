@@ -49,3 +49,7 @@ yarn-error.log*
 *.sln
 *.sw?
 Thumbs.db
+
+# Graphify local caches & machine-specific sidecars
+graphify-out/.graphify_*
+graphify-out/cache/

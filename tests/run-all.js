@@ -16,7 +16,8 @@ const testFiles = [
   'rag.test.js',
   'grounding.test.js',
   'sentiment.test.js',
-  'audio.test.js'
+  'audio.test.js',
+  'visualOverhaul.test.js'
 ];
 
 console.log('====================================================');

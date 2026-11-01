@@ -5,15 +5,15 @@
  * Clean abstraction layer simulating the future local FastAPI + SQLite-vec + Gemma 2B/9B backend.
  */
 
-import {
+import type {
   GroundedMemoryAnswer,
   SovereignSentimentResponse,
   RetrievalResult,
   MemoryDocument,
   VisualDirectionState
-} from '../types';
-import { localRAG } from './ragEngine';
-import { gemmaService } from './gemmaSimulator';
+} from '../types/index.ts';
+import { localRAG } from './ragEngine.ts';
+import { gemmaService } from './gemmaSimulator.ts';
 
 export interface QueryMemoriesRequest {
   question: string;

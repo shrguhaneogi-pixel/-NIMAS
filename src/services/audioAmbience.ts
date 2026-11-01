@@ -14,7 +14,9 @@ class AudioAmbienceEngine {
 
   public init() {
     if (this.ctx) return;
+    if (typeof window === 'undefined') return;
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
     this.ctx = new AudioContextClass();
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.setValueAtTime(0.3, this.ctx.currentTime);
@@ -32,6 +34,7 @@ class AudioAmbienceEngine {
   }
 
   public start() {
+    if (this.isPlaying) return;
     this.init();
     if (!this.ctx || !this.masterGain) return;
     if (this.ctx.state === 'suspended') {

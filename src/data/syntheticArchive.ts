@@ -5,7 +5,7 @@
  * 100% fictional Mexican memorial archive for Día de los Muertos RAG evaluation.
  */
 
-import { MemoryDocument, GoldTestCase } from '../types';
+import type { MemoryDocument, GoldTestCase } from '../types/index.ts';
 
 export const SYNTHETIC_ARCHIVE: MemoryDocument[] = [
   {
